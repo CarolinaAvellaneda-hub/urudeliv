@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UruDeliv App</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; background: #f4f7f9; }
+        .header { display: flex; background: #1a73e8; color: white; position: sticky; top: 0; }
+        .tab { flex: 1; text-align: center; padding: 20px; font-weight: bold; cursor: pointer; }
+        .tab.active { border-bottom: 4px solid white; }
+        .content { padding: 20px; display: none; }
+        .content.active { display: block; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-left: 8px solid #34a853; }
+        input { width: 100%; padding: 15px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .btn-save { width: 100%; padding: 15px; background: #34a853; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        .waze-btn { display: none; width: 100%; padding: 20px; background: #33ccff; color: white; text-align: center; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="tab active" id="t1" onclick="nav('p')">ENTREGA</div>
+    <div class="tab" id="t2" onclick="nav('a')">CONFIG</div>
+</div>
+
+<div id="p" class="content active">
+    <div class="card">
+        <h2 id="view-n">Sin pedido activo</h2>
+        <p id="view-d">Carga las coordenadas en la pestaña CONFIG</p>
+        <a id="btn-waze" href="#" class="waze-btn">🚗 ABRIR EN APP WAZE</a>
+    </div>
+</div>
+
+<div id="a" class="content">
+    <input type="text" id="in-n" placeholder="Nombre de la Tienda">
+    <input type="text" id="in-c" placeholder="Coordenadas (Lat, Lng)">
+    <button class="btn-save" onclick="save()">GUARDAR DATOS</button>
+</div>
+
+<script>
+    function nav(id) {
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    function save() {
+        const coords = document.getElementById('in-c').value;
+        if(!coords.includes(',')) return alert("Falta la coma en las coordenadas");
+        
+        const latlng = coords.split(',');
+        const lat = latlng[0].trim();
+        const lng = latlng[1].trim();
+
+        document.getElementById('view-n').innerText = document.getElementById('in-n').value || "Pedido Listo";
+        document.getElementById('view-d').innerText = "Coordenadas: " + coords;
+        
+        // Link directo que Android NO puede ignorar
+        const btn = document.getElementById('btn-waze');
+        btn.href = `intent://waze.com/ul?ll=${lat},${lng}&navigate=yes#Intent;package=com.waze;scheme=https;end;`;
+        btn.style.display = 'block';
+        
+        alert("¡Datos guardados!");
+        nav('p');
+    }
+</script>
+
+</body>
+</html>
