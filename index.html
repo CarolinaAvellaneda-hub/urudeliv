@@ -3,134 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UruDeliv Pro - GPS</title>
+    <title>UruDeliv Pro v2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { 
-            --bg: #0b0e14; 
-            --card: #161b22; 
-            --accent: #3b82f6; /* Azul Eléctrico */
-            --text: #e6edf3;
-            --success: #238636;
-        }
-        body { margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+        :root { --bg: #05070a; --card: #12151c; --accent: #2979ff; --text: #f0f2f5; --dim: #8b949e; }
+        body { margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        .header { padding: 25px 20px; font-size: 20px; font-weight: 800; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; }
+        /* Navegación Superior */
+        .header { padding: 20px; font-size: 20px; font-weight: 800; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; background: var(--card); }
         
-        .stats-container { flex: 1; overflow-y: auto; padding: 15px; }
-        .card-main { background: var(--card); border-radius: 12px; padding: 15px; border: 1px solid #30363d; }
-        
-        .pedido-item { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid #30363d; }
-        .pedido-item:last-child { border: none; }
-        .pedido-info { flex: 1; }
-        .pedido-id { font-weight: 700; font-size: 17px; margin: 0; color: #58a6ff; }
-        .pedido-date { font-size: 11px; color: #8b949e; }
-        
-        .pedido-stats { text-align: right; }
-        .pedido-km { color: #8b949e; font-size: 13px; font-weight: 500; }
-        .pedido-price { color: var(--accent); font-weight: 900; font-size: 18px; margin-top: 4px; }
+        /* Contenedores de Sección */
+        .view { flex: 1; overflow-y: auto; padding: 20px; display: none; }
+        .view.active { display: block; }
 
-        .nav-bar { background: #161b22; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #30363d; }
-        .nav-item { text-align: center; font-size: 10px; color: #8b949e; font-weight: 600; }
+        /* Estilo Tarjetas */
+        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #21262d; margin-bottom: 20px; }
+        h3 { margin-top: 0; font-size: 14px; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
+
+        /* Formulario Nuevo Pedido */
+        input { width: 100%; padding: 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; }
+        .btn-main { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        
+        /* Item de Historial */
+        .pedido-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #21262d; }
+        .pedido-id { font-weight: bold; color: var(--accent); margin: 0; }
+        .pedido-date { font-size: 11px; color: var(--dim); }
+        .price { font-weight: 900; color: #4ade80; }
+
+        /* Gráfico */
+        .chart-container { height: 200px; margin-bottom: 20px; }
+
+        /* Barra Inferior */
+        .nav-bar { background: var(--card); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #21262d; }
+        .nav-item { text-align: center; font-size: 10px; color: var(--dim); flex: 1; }
         .nav-item.active { color: var(--accent); }
-        .nav-icon { font-size: 22px; display: block; margin-bottom: 4px; }
-
-        .fab { position: fixed; bottom: 85px; right: 20px; background: var(--accent); width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: none; color: white; transition: 0.2s; }
-        .fab:active { transform: scale(0.9); }
+        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    UruDeliv <span>📦</span>
+<div class="header">UruDeliv <span style="color:var(--accent)">PRO</span></div>
+
+<div id="view-nuevo" class="view active">
+    <div class="card">
+        <h3>📍 Destino del Envío</h3>
+        <input type="text" id="target-name" placeholder="Nombre del Local o Dirección">
+        <button class="btn-main" onclick="lanzarWaze()">ABRIR WAZE Y SALIR</button>
+    </div>
+    
+    <div id="card-en-proceso" class="card" style="display:none; border-left: 5px solid var(--accent);">
+        <h3>📦 Pedido en Curso</h3>
+        <p id="current-dest" style="font-weight:bold; font-size:18px; margin: 5px 0;"></p>
+        <button class="btn-main" style="background:#238636" onclick="finalizarPedido()">MARCAR COMO ENTREGADO</button>
+    </div>
 </div>
 
-<div class="stats-container">
-    <div class="card-main">
+<div id="view-stats" class="view">
+    <div class="card">
+        <h3>Ganancias Semanales</h3>
+        <div class="chart-container">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <h3>Historial Reciente</h3>
         <div id="lista-pedidos">
             </div>
     </div>
 </div>
 
 <div class="nav-bar">
-    <div class="nav-item"><span class="nav-icon">📋</span>Pedidos</div>
-    <div class="nav-item active"><span class="nav-icon">📊</span>Balance</div>
-    <div class="nav-item"><span class="nav-icon">⚙️</span>Ajustes</div>
+    <div class="nav-item active" id="n-nuevo" onclick="showView('nuevo')"><span class="nav-icon">➕</span>Nuevo</div>
+    <div class="nav-item" id="n-stats" onclick="showView('stats')"><span class="nav-icon">📊</span>Balance</div>
 </div>
 
-<button class="fab" onclick="registrarEntrega()">+</button>
-
 <script>
-    let pedidos = JSON.parse(localStorage.getItem('pedidos_urudeliv')) || [];
+    let pedidos = JSON.parse(localStorage.getItem('urudeliv_data')) || [];
     let startCoords = null;
+    let chart = null;
 
-    // Iniciar rastreo de GPS
-    if (navigator.geolocation) {
+    function showView(v) {
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('view-' + v).classList.add('active');
+        document.getElementById('n-' + v).classList.add('active');
+        if(v === 'stats') initChart();
+    }
+
+    function lanzarWaze() {
+        const dest = document.getElementById('target-name').value;
+        if(!dest) return alert("Escribe un destino");
+        
+        // Capturar punto de inicio para el GPS
         navigator.geolocation.getCurrentPosition(pos => {
             startCoords = pos.coords;
+            document.getElementById('current-dest').innerText = dest;
+            document.getElementById('card-en-proceso').style.display = 'block';
+            window.open(`https://waze.com/ul?q=${encodeURIComponent(dest)}&navigate=yes`);
         });
     }
 
-    function registrarEntrega() {
-        if (!navigator.geolocation) return alert("Activa el GPS");
-
+    function finalizarPedido() {
         navigator.geolocation.getCurrentPosition(pos => {
-            const lat2 = pos.coords.latitude;
-            const lon2 = pos.coords.longitude;
-            
-            // Si es el primer pedido, usamos una distancia simulada para probar
-            // En uso real, esto mide la distancia desde el punto anterior
             let km = 0;
             if(startCoords) {
-                km = calcularDistancia(startCoords.latitude, startCoords.longitude, lat2, lon2);
-            } else {
-                km = (Math.random() * 5 + 1); // Prueba inicial
+                km = calcularDistancia(startCoords.latitude, startCoords.longitude, pos.coords.latitude, pos.coords.longitude);
             }
+            // Si el GPS no se movió (prueba), ponemos 1km por defecto
+            if(km < 0.1) km = 1.2; 
 
             const nuevo = {
-                id: "#" + Math.floor(100000 + Math.random() * 900000),
-                fecha: new Date().toLocaleString('es-UY'),
-                km: km.toFixed(1)
+                id: "#" + Math.floor(100000 + Math.random() * 899999),
+                nombre: document.getElementById('current-dest').innerText,
+                fecha: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'}),
+                km: km.toFixed(1),
+                total: (85 + (km * 7.5)).toFixed(0)
             };
 
             pedidos.unshift(nuevo);
-            localStorage.setItem('pedidos_urudeliv', JSON.stringify(pedidos));
-            startCoords = pos.coords; // Actualizar origen para el siguiente
+            localStorage.setItem('urudeliv_data', JSON.stringify(pedidos));
+            
+            // Reset interfaz
+            document.getElementById('card-en-proceso').style.display = 'none';
+            document.getElementById('target-name').value = "";
+            alert("¡Pedido Guardado!");
             render();
         });
     }
 
     function calcularDistancia(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        const R = 6371;
+        const dLat = (lat2-lat1)*Math.PI/180;
+        const dLon = (lon2-lon1)*Math.PI/180;
+        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
     function render() {
-        const container = document.getElementById('lista-pedidos');
-        if(pedidos.length === 0) {
-            container.innerHTML = "<p style='text-align:center; color:#8b949e;'>Toca + para registrar tu primera entrega</p>";
-            return;
-        }
-        container.innerHTML = pedidos.map(p => `
+        const lista = document.getElementById('lista-pedidos');
+        lista.innerHTML = pedidos.slice(0, 5).map(p => `
             <div class="pedido-item">
-                <div class="pedido-info">
-                    <p class="pedido-id">${p.id}</p>
-                    <span class="pedido-date">${p.fecha}</span>
+                <div>
+                    <p class="pedido-id">${p.nombre}</p>
+                    <span class="pedido-date">${p.id} • ${p.fecha}</span>
                 </div>
-                <div class="pedido-stats">
-                    <div class="pedido-km">${p.km} km</div>
-                    <div class="pedido-price">$ ${(85 + (p.km * 7.5)).toFixed(2)}</div>
+                <div style="text-align:right">
+                    <div style="font-size:12px; color:var(--dim)">${p.km} km</div>
+                    <div class="price">$ ${p.total}</div>
                 </div>
             </div>
         `).join('');
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if(chart) chart.destroy();
+        
+        // Agrupar ganancias por día (últimos 5 días)
+        const dias = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+        const montos = dias.map(d => {
+            return pedidos.filter(p => p.dia === d).reduce((acc, curr) => acc + parseInt(curr.total), 0);
+        });
+
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: dias,
+                datasets: [{
+                    label: 'Pesos $',
+                    data: montos,
+                    backgroundColor: '#2979ff',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#21262d' } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
     }
 
     render();
 </script>
 </body>
 </html>
+
 
 
