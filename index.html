@@ -3,79 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UruDeliv Express</title>
+    <title>UruDeliv Pro - Estadísticas</title>
     <style>
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
-        .header { display: flex; background: #1a73e8; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .tab { flex: 1; text-align: center; padding: 20px; font-weight: bold; cursor: pointer; opacity: 0.7; }
-        .tab.active { opacity: 1; border-bottom: 4px solid white; }
+        :root { --bg: #121212; --card: #1e1e26; --accent: #00f2ff; --text: #ffffff; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
         
-        .content { display: none; padding: 20px; flex: 1; }
-        .content.active { display: block; }
+        .header { padding: 20px; font-size: 22px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 10px solid #34a853; text-align: center; }
-        h2 { margin: 0 0 15px 0; color: #333; font-size: 24px; }
+        .stats-container { flex: 1; overflow-y: auto; padding: 15px; }
+        .card-main { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+        .card-main h3 { margin-top: 0; font-size: 18px; color: #bbb; display: flex; align-items: center; gap: 10px; }
 
-        input { width: 100%; padding: 18px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 10px; font-size: 18px; box-sizing: border-box; outline: none; }
-        input:focus { border-color: #1a73e8; }
+        .pedido-item { display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #333; }
+        .pedido-icon { font-size: 24px; margin-right: 15px; }
+        .pedido-info { flex: 1; }
+        .pedido-id { font-weight: bold; font-size: 18px; margin: 0; }
+        .pedido-date { font-size: 12px; color: #888; }
         
-        .btn-save { width: 100%; padding: 18px; background: #34a853; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; }
-        
-        .waze-btn { display: none; width: 100%; padding: 25px 0; background: #33ccff; color: white; text-align: center; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 20px; margin-top: 10px; box-shadow: 0 4px 10px rgba(51, 204, 255, 0.4); }
+        .pedido-stats { text-align: right; }
+        .pedido-km { color: #888; font-size: 14px; margin-bottom: 5px; }
+        .pedido-price { color: var(--accent); font-weight: bold; font-size: 18px; }
+
+        .nav-bar { background: #1a1a24; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; }
+        .nav-item { text-align: center; font-size: 11px; color: #888; cursor: pointer; }
+        .nav-item.active { color: white; }
+        .nav-icon { font-size: 20px; display: block; margin-bottom: 5px; }
+
+        /* Botón flotante para nuevo pedido */
+        .fab { position: fixed; bottom: 90px; right: 20px; background: #1a73e8; width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div id="t-p" class="tab active" onclick="nav('p')">PEDIDO</div>
-    <div id="t-a" class="tab" onclick="nav('a')">⚙️ BUSCAR</div>
+    Estadísticas Semanales
+    <span onclick="location.reload()">↻</span>
 </div>
 
-<div id="p" class="content active">
-    <div class="card">
-        <h2 id="view-name">Sin Destino</h2>
-        <a id="btn-waze" href="#" class="waze-btn">🚙 ABRIR WAZE</a>
+<div class="stats-container">
+    <div class="card-main">
+        <h3>📋 Pedidos Entregados Recientemente</h3>
+        <div id="lista-pedidos">
+            </div>
     </div>
 </div>
 
-<div id="a" class="content">
-    <div style="background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-        <h3 style="margin-top:0;">Destino del Reparto</h3>
-        <input type="text" id="in-search" placeholder="Nombre del local o dirección">
-        <button class="btn-save" onclick="prepararViaje()">GUARDAR DESTINO</button>
-    </div>
+<div class="nav-bar">
+    <div class="nav-item"><span class="nav-icon">≡</span>Pedidos</div>
+    <div class="nav-item"><span class="nav-icon">🗺</span>Mapa</div>
+    <div class="nav-item active"><span class="nav-icon">★</span>Estadísticas</div>
 </div>
+
+<div class="fab" onclick="nuevoPedido()">+</div>
 
 <script>
-    function nav(id) {
-        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.getElementById('t-' + id).classList.add('active');
+    // Datos de ejemplo para que veas como queda
+    const pedidos = [
+        { id: "#101251", fecha: "2026-01-22 16:39:05", km: 10.3 },
+        { id: "#101247", fecha: "2026-01-22 16:29:33", km: 2.2 },
+        { id: "#101243", fecha: "2026-01-22 15:08:21", km: 11.6 }
+    ];
+
+    function calcularPrecio(km) {
+        // 85 base + 15 cada 2km (7.5 por km)
+        return (85 + (km * 7.5)).toFixed(2);
     }
 
-    function prepararViaje() {
-        const destino = document.getElementById('in-search').value;
-        
-        if (destino.trim() === "") {
-            alert("Escribe un destino primero.");
-            return;
-        }
-
-        // Mostrar solo el nombre en la pantalla principal
-        document.getElementById('view-name').innerText = destino;
-
-        // Generar link de búsqueda por texto para Waze
-        const linkWaze = `https://waze.com/ul?q=${encodeURIComponent(destino)}&navigate=yes`;
-        
-        const btn = document.getElementById('btn-waze');
-        btn.href = linkWaze;
-        btn.style.display = 'block';
-
-        alert("¡Destino cargado!");
-        nav('p');
+    function renderPedidos() {
+        const lista = document.getElementById('lista-pedidos');
+        lista.innerHTML = pedidos.map(p => `
+            <div class="pedido-item">
+                <div class="pedido-icon">📦</div>
+                <div class="pedido-info">
+                    <p class="pedido-id">${p.id}</p>
+                    <span class="pedido-date">${p.fecha}</span>
+                </div>
+                <div class="pedido-stats">
+                    <div class="pedido-km">${p.km} km</div>
+                    <div class="pedido-price">$ ${calcularPrecio(p.km)}</div>
+                </div>
+            </div>
+        `).join('');
     }
+
+    function nuevoPedido() {
+        const id = "#" + Math.floor(Math.random() * 900000 + 100000);
+        const km = (Math.random() * 15).toFixed(1);
+        const ahora = new Date().toLocaleString();
+        pedidos.unshift({ id, fecha: ahora, km: parseFloat(km) });
+        renderPedidos();
+    }
+
+    renderPedidos();
 </script>
 
 </body>
 </html>
+
