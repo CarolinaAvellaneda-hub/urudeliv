@@ -3,196 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UruDeliv Pro v2</title>
+    <title>UruDeliv Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #05070a; --card: #12151c; --accent: #2979ff; --text: #f0f2f5; --dim: #8b949e; }
-        body { margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --bg: #0b0e14; --card: #161b22; --accent: #2979ff; --text: #e6edf3; --dim: #8b949e; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Navegación Superior */
-        .header { padding: 20px; font-size: 20px; font-weight: 800; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; background: var(--card); }
+        /* Cabecera */
+        .header { padding: 20px; font-size: 22px; font-weight: 800; display: flex; justify-content: space-between; background: var(--card); border-bottom: 1px solid #30363d; }
         
-        /* Contenedores de Sección */
+        /* Vistas */
         .view { flex: 1; overflow-y: auto; padding: 20px; display: none; }
         .view.active { display: block; }
 
-        /* Estilo Tarjetas */
-        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #21262d; margin-bottom: 20px; }
-        h3 { margin-top: 0; font-size: 14px; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
+        /* Tarjetas Estilo Dark */
+        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #30363d; margin-bottom: 20px; }
+        h3 { margin-top: 0; font-size: 13px; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
 
-        /* Formulario Nuevo Pedido */
+        /* Inputs y Botones */
         input { width: 100%; padding: 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; }
-        .btn-main { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        
-        /* Item de Historial */
-        .pedido-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #21262d; }
-        .pedido-id { font-weight: bold; color: var(--accent); margin: 0; }
-        .pedido-date { font-size: 11px; color: var(--dim); }
-        .price { font-weight: 900; color: #4ade80; }
+        .btn-blue { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; }
+        .btn-green { width: 100%; padding: 16px; background: #238636; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; }
 
-        /* Gráfico */
-        .chart-container { height: 200px; margin-bottom: 20px; }
+        /* Lista de Pedidos */
+        .pedido-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #30363d; }
+        .p-name { font-weight: bold; color: #58a6ff; margin: 0; }
+        .p-sub { font-size: 11px; color: var(--dim); }
+        .p-price { font-weight: 900; color: #39d353; font-size: 18px; }
 
-        /* Barra Inferior */
-        .nav-bar { background: var(--card); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #21262d; }
-        .nav-item { text-align: center; font-size: 10px; color: var(--dim); flex: 1; }
+        /* Navegación Inferior */
+        .nav-bar { background: var(--card); display: flex; border-top: 1px solid #30363d; padding: 10px 0; padding-bottom: 20px; }
+        .nav-item { flex: 1; text-align: center; color: var(--dim); font-size: 11px; transition: 0.2s; }
         .nav-item.active { color: var(--accent); }
-        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        .nav-icon { font-size: 24px; display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
 
 <div class="header">UruDeliv <span style="color:var(--accent)">PRO</span></div>
 
-<div id="view-nuevo" class="view active">
+<div id="v-pedidos" class="view active">
     <div class="card">
         <h3>📍 Destino del Envío</h3>
-        <input type="text" id="target-name" placeholder="Nombre del Local o Dirección">
-        <button class="btn-main" onclick="lanzarWaze()">ABRIR WAZE Y SALIR</button>
+        <input type="text" id="target" placeholder="Nombre del Local o Dirección">
+        <button class="btn-blue" onclick="irWaze()">ABRIR WAZE Y SALIR</button>
     </div>
-    
-    <div id="card-en-proceso" class="card" style="display:none; border-left: 5px solid var(--accent);">
+    <div id="en-curso" class="card" style="display:none; border-left: 5px solid #39d353;">
         <h3>📦 Pedido en Curso</h3>
-        <p id="current-dest" style="font-weight:bold; font-size:18px; margin: 5px 0;"></p>
-        <button class="btn-main" style="background:#238636" onclick="finalizarPedido()">MARCAR COMO ENTREGADO</button>
+        <p id="dest-actual" style="font-weight:bold; font-size:18px;"></p>
+        <button class="btn-green" onclick="completar()">MARCAR COMO ENTREGADO</button>
     </div>
 </div>
 
-<div id="view-stats" class="view">
+<div id="v-balance" class="view">
     <div class="card">
         <h3>Ganancias Semanales</h3>
-        <div class="chart-container">
-            <canvas id="myChart"></canvas>
-        </div>
+        <div style="height: 180px;"><canvas id="chart"></canvas></div>
     </div>
     <div class="card">
-        <h3>Historial Reciente</h3>
-        <div id="lista-pedidos">
-            </div>
+        <h3>Historial (Recientes)</h3>
+        <div id="historial"></div>
+    </div>
+</div>
+
+<div id="v-mapa" class="view">
+    <div class="card" style="text-align: center;">
+        <p>Cargando Mapa de Montevideo...</p>
+        <div style="font-size: 50px;">🗺️</div>
     </div>
 </div>
 
 <div class="nav-bar">
-    <div class="nav-item active" id="n-nuevo" onclick="showView('nuevo')"><span class="nav-icon">➕</span>Nuevo</div>
-    <div class="nav-item" id="n-stats" onclick="showView('stats')"><span class="nav-icon">📊</span>Balance</div>
+    <div class="nav-item active" id="n-pedidos" onclick="show('pedidos')"><span class="nav-icon">📋</span>Pedidos</div>
+    <div class="nav-item" id="n-mapa" onclick="show('mapa')"><span class="nav-icon">🗺️</span>Mapa</div>
+    <div class="nav-item" id="n-balance" onclick="show('balance')"><span class="nav-icon">📊</span>Balance</div>
 </div>
 
 <script>
-    let pedidos = JSON.parse(localStorage.getItem('urudeliv_data')) || [];
-    let startCoords = null;
-    let chart = null;
+    let db = JSON.parse(localStorage.getItem('uru_pro')) || [];
+    let start = null;
+    let myChart = null;
 
-    function showView(v) {
-        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById('view-' + v).classList.add('active');
-        document.getElementById('n-' + v).classList.add('active');
-        if(v === 'stats') initChart();
+    function show(v) {
+        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        document.getElementById('v-'+v).classList.add('active');
+        document.getElementById('n-'+v).classList.add('active');
+        if(v === 'balance') renderBalance();
     }
 
-    function lanzarWaze() {
-        const dest = document.getElementById('target-name').value;
-        if(!dest) return alert("Escribe un destino");
-        
-        // Capturar punto de inicio para el GPS
-        navigator.geolocation.getCurrentPosition(pos => {
-            startCoords = pos.coords;
-            document.getElementById('current-dest').innerText = dest;
-            document.getElementById('card-en-proceso').style.display = 'block';
-            window.open(`https://waze.com/ul?q=${encodeURIComponent(dest)}&navigate=yes`);
+    function irWaze() {
+        const t = document.getElementById('target').value;
+        if(!t) return;
+        navigator.geolocation.getCurrentPosition(p => {
+            start = p.coords;
+            document.getElementById('dest-actual').innerText = t;
+            document.getElementById('en-curso').style.display = 'block';
+            window.open(`https://waze.com/ul?q=${encodeURIComponent(t)}&navigate=yes`);
         });
     }
 
-    function finalizarPedido() {
-        navigator.geolocation.getCurrentPosition(pos => {
-            let km = 0;
-            if(startCoords) {
-                km = calcularDistancia(startCoords.latitude, startCoords.longitude, pos.coords.latitude, pos.coords.longitude);
+    function completar() {
+        navigator.geolocation.getCurrentPosition(p => {
+            let km = 1.5; // Simulación si no hay movimiento
+            if(start) {
+                const R = 6371;
+                const dLat = (p.coords.latitude-start.latitude)*Math.PI/180;
+                const dLon = (p.coords.longitude-start.longitude)*Math.PI/180;
+                const a = Math.sin(dLat/2)**2 + Math.cos(start.latitude*Math.PI/180)*Math.cos(p.coords.latitude*Math.PI/180)*Math.sin(dLon/2)**2;
+                km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             }
-            // Si el GPS no se movió (prueba), ponemos 1km por defecto
-            if(km < 0.1) km = 1.2; 
+            if(km < 0.2) km = 1.8; // Para pruebas
 
-            const nuevo = {
-                id: "#" + Math.floor(100000 + Math.random() * 899999),
-                nombre: document.getElementById('current-dest').innerText,
-                fecha: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'}),
+            db.unshift({
+                nombre: document.getElementById('dest-actual').innerText,
                 km: km.toFixed(1),
-                total: (85 + (km * 7.5)).toFixed(0)
-            };
-
-            pedidos.unshift(nuevo);
-            localStorage.setItem('urudeliv_data', JSON.stringify(pedidos));
-            
-            // Reset interfaz
-            document.getElementById('card-en-proceso').style.display = 'none';
-            document.getElementById('target-name').value = "";
-            alert("¡Pedido Guardado!");
-            render();
+                total: (85 + (km * 7.5)).toFixed(0),
+                dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'})
+            });
+            localStorage.setItem('uru_pro', JSON.stringify(db));
+            document.getElementById('en-curso').style.display = 'none';
+            document.getElementById('target').value = "";
+            alert("¡Entrega guardada!");
         });
     }
 
-    function calcularDistancia(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = (lat2-lat1)*Math.PI/180;
-        const dLon = (lon2-lon1)*Math.PI/180;
-        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-
-    function render() {
-        const lista = document.getElementById('lista-pedidos');
-        lista.innerHTML = pedidos.slice(0, 5).map(p => `
+    function renderBalance() {
+        const hist = document.getElementById('historial');
+        hist.innerHTML = db.slice(0, 5).map(p => `
             <div class="pedido-item">
-                <div>
-                    <p class="pedido-id">${p.nombre}</p>
-                    <span class="pedido-date">${p.id} • ${p.fecha}</span>
-                </div>
-                <div style="text-align:right">
-                    <div style="font-size:12px; color:var(--dim)">${p.km} km</div>
-                    <div class="price">$ ${p.total}</div>
-                </div>
-            </div>
-        `).join('');
-    }
+                <div><p class="p-name">${p.nombre}</p><span class="p-sub">${p.km} km</span></div>
+                <div class="p-price">$ ${p.total}</div>
+            </div>`).join('');
 
-    function initChart() {
-        const ctx = document.getElementById('myChart').getContext('2d');
-        if(chart) chart.destroy();
-        
-        // Agrupar ganancias por día (últimos 5 días)
+        const ctx = document.getElementById('chart').getContext('2d');
+        if(myChart) myChart.destroy();
         const dias = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
-        const montos = dias.map(d => {
-            return pedidos.filter(p => p.dia === d).reduce((acc, curr) => acc + parseInt(curr.total), 0);
-        });
-
-        chart = new Chart(ctx, {
+        const montos = dias.map(d => db.filter(x => x.dia.includes(d)).reduce((a, b) => a + parseInt(b.total), 0));
+        
+        myChart = new Chart(ctx, {
             type: 'bar',
-            data: {
-                labels: dias,
-                datasets: [{
-                    label: 'Pesos $',
-                    data: montos,
-                    backgroundColor: '#2979ff',
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#21262d' } },
-                    x: { grid: { display: false } }
-                },
-                plugins: { legend: { display: false } }
-            }
+            data: { labels: dias, datasets: [{ data: montos, backgroundColor: '#2979ff', borderRadius: 6 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#30363d' } } } }
         });
     }
-
-    render();
 </script>
 </body>
 </html>
+
 
 
 
