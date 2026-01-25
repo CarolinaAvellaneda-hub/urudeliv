@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>UruDeliv Pro - Buscador Total</title>
+    <title>UruDeliv Pro - v3.5</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -17,11 +17,12 @@
         .view.active { display: block; }
         #v-mapa { padding: 0; }
         #map { height: 100%; width: 100%; background: var(--bg); }
-        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #21262d; margin-bottom: 20px; }
+        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #30363d; margin-bottom: 20px; }
         h3 { margin-top: 0; font-size: 11px; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
         input { width: 100%; padding: 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 10px; outline: none; }
+        input:focus { border-color: var(--accent); }
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; }
         .btn-blue { background: var(--accent); color: white; }
         .btn-orange { background: #ff9800; color: white; }
         .btn-green { background: #238636; color: white; }
@@ -30,31 +31,31 @@
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--dim); font-size: 11px; }
         .nav-item.active { color: var(--accent); font-weight: bold; }
         .nav-icon { font-size: 24px; margin-bottom: 2px; }
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; color: white; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; color: white; align-items: center; justify-content: center; text-align: center; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading-overlay"><div>📍 Buscando en Montevideo...<br><small>Calculando ruta exacta sin errores</small></div></div>
+<div id="loader" class="loading-overlay"><div>📍 Verificando mapa de Montevideo...<br><small>Sincronizando coordenadas exactas</small></div></div>
 <div class="header">UruDeliv <span style="color:var(--accent)">PRO</span></div>
 
 <div class="main-container">
     <div id="v-pedidos" class="view active">
         <div class="card">
             <h3>📍 Nuevo Reparto</h3>
-            <input type="text" id="store" placeholder="Local (Ej: Uprint, Tienda Inglesa)">
-            <input type="text" id="client" placeholder="Dirección Cliente (Ej: Ceibal 1587)">
-            <button class="btn btn-blue" onclick="iniciarLogistica()">BUSCAR Y CALCULAR RUTA</button>
+            <input type="text" id="store" placeholder="Local (Ej: Uprint, Farmashop)">
+            <input type="text" id="client" placeholder="Dirección Cliente">
+            <button class="btn btn-blue" onclick="iniciarLogistica()">BUSCAR RUTA</button>
         </div>
         
         <div id="active-trip" class="card" style="display:none; border-left: 5px solid #2979ff;">
-            <h4 id="trip-info" style="margin:0; color:var(--accent)"></h4>
-            <p id="trip-cost" style="font-weight:bold; font-size:18px; margin: 10px 0;"></p>
+            <h4 id="trip-info" style="margin:0; color:var(--accent); font-size: 14px;"></h4>
+            <p id="trip-cost" style="font-weight:bold; font-size:18px; margin: 10px 0; color: #4ade80;"></p>
             <div class="btn-group">
-                <button class="btn btn-orange" onclick="abrirWaze('store')">🛒 WAZE RETIRO</button>
-                <button class="btn btn-green" onclick="abrirWaze('client')">🎁 WAZE ENTREGA</button>
+                <button class="btn btn-orange" onclick="abrirWaze('store')">🛒 IR A RETIRO</button>
+                <button class="btn btn-green" onclick="abrirWaze('client')">🎁 IR A ENTREGA</button>
             </div>
-            <button class="btn btn-finish" onclick="finalizarEntrega()">TERMINAR PEDIDO</button>
+            <button class="btn btn-finish" onclick="finalizarEntrega()">MARCAR ENTREGADO</button>
         </div>
     </div>
 
@@ -62,7 +63,7 @@
 
     <div id="v-balance" class="view">
         <div class="card"><div style="height:150px"><canvas id="chart"></canvas></div></div>
-        <div class="card"><h3>Ganancias Reales</h3><div id="historial"></div></div>
+        <div class="card"><h3>Historial de Ganancias</h3><div id="historial"></div></div>
     </div>
 </div>
 
@@ -73,13 +74,14 @@
 </div>
 
 <script>
-    let db = JSON.parse(localStorage.getItem('uru_v3_4')) || [];
+    let db = JSON.parse(localStorage.getItem('uru_v3_5')) || [];
     let map, userMarker, storeMarker, clientMarker;
     let currentTrip = null;
 
-    // LOCALES FAVORITOS (Para que nunca fallen)
-    const FAVORITOS = {
-        "uprint": { lat: -34.9051, lon: -56.1831, display: "Uprint (Colonia y Tacuarembó)" }
+    // BASE DE DATOS DE LOCALES FIJOS (Precisión 100%)
+    const DB_LOCALES = {
+        "uprint": { lat: -34.8988, lon: -56.1738, display: "Uprint (Colonia 2095)" },
+        "uprint colonia": { lat: -34.8988, lon: -56.1738, display: "Uprint (Colonia 2095)" }
     };
 
     function show(v) {
@@ -101,13 +103,16 @@
     }
 
     async function buscarGPS(query) {
-        const q = query.toLowerCase();
-        if(FAVORITOS[q]) return FAVORITOS[q];
+        const q = query.toLowerCase().trim();
+        if(DB_LOCALES[q]) return DB_LOCALES[q]; // Si está en nuestra DB, usarlo directo
 
         try {
             const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Montevideo, Uruguay")}&limit=1`);
             const d = await r.json();
-            return d.length > 0 ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), display: d[0].display_name.split(',')[0] } : null;
+            if(d.length > 0) {
+                return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), display: d[0].display_name.split(',')[0] };
+            }
+            return null;
         } catch(e) { return null; }
     }
 
@@ -122,18 +127,18 @@
     async function iniciarLogistica() {
         const s = document.getElementById('store').value;
         const c = document.getElementById('client').value;
-        if(!s || !c) return alert("Faltan datos");
+        if(!s || !c) return alert("Ingresa local y destino");
 
         document.getElementById('loader').style.display = 'flex';
         const pS = await buscarGPS(s);
         const pC = await buscarGPS(c);
         document.getElementById('loader').style.display = 'none';
 
-        if(!pS || !pC) return alert("No encontré una de las direcciones. Prueba agregando la calle.");
+        if(!pS || !pC) return alert("No se encontró la ubicación. Prueba con 'Calle y Calle'.");
 
         const km = calcularDistancia(pS, pC);
-        // MATEMÁTICA EXACTA: $85 base + ($7.5 x km) -> ajustado a $15 cada 2km
-        const total = Math.round(85 + (km * 7.5));
+        // Tarifa fija para que no varíe: $85 base + $8.5 por KM
+        const total = Math.round(85 + (km * 8.5));
 
         currentTrip = { s: pS, c: pC, km: km, total: total };
 
@@ -158,7 +163,7 @@
 
     function finalizarEntrega() {
         db.unshift({ name: currentTrip.c.display, km: currentTrip.km, total: currentTrip.total, dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'}) });
-        localStorage.setItem('uru_v3_4', JSON.stringify(db));
+        localStorage.setItem('uru_v3_5', JSON.stringify(db));
         document.getElementById('active-trip').style.display = 'none';
         document.getElementById('store').value = "";
         document.getElementById('client').value = "";
@@ -167,12 +172,25 @@
 
     function renderBalance() {
         const h = document.getElementById('historial');
-        h.innerHTML = db.slice(0,8).map(p => `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #21262d; font-size:13px;"><span>${p.name} (${p.km}km)</span><b>$${p.total}</b></div>`).join('');
-        // El código del gráfico se mantiene igual...
+        h.innerHTML = db.slice(0,10).map(p => `
+            <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #21262d;">
+                <span style="font-size:13px;">${p.name} <br><small style="color:var(--dim)">${p.km} km</small></span>
+                <b style="color:#4ade80">$${p.total}</b>
+            </div>`).join('');
+            
+        // Renderizar gráfico simple
+        const ctx = document.getElementById('chart').getContext('2d');
+        if(window.myChart) window.myChart.destroy();
+        const labels = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+        const data = labels.map(l => db.filter(x => x.dia.includes(l)).reduce((a,b) => a + b.total, 0));
+        window.myChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ data, backgroundColor: '#2979ff', borderRadius: 5 }] },
+            options: { plugins: { legend: {display: false} }, scales: { y: { grid: {color: '#21262d'}, ticks: {color: '#8b949e'} }, x: { grid: {display: false}, ticks: {color: '#8b949e'} } } }
+        });
     }
 </script>
 </body>
 </html>
-
 
 
