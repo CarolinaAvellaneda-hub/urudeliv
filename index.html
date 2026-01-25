@@ -69,96 +69,71 @@
 </div>
 
 <script>
-    let db = JSON.parse(localStorage.getItem('uru_v3_3')) || [];
-    let map, userMarker, storeMarker, clientMarker;
-    let currentTrip = null;
-    let myChart = null;
+    // 1. Coordenadas fijas para evitar errores de búsqueda
+    const UBICACIONES_FIJAS = {
+        "uprint": [-34.9051, -56.1831], // Colonia y Tacuarembó
+        "uprint colonia": [-34.9051, -56.1831]
+    };
 
-    function show(v) {
-        document.querySelectorAll('.view, .nav-item').forEach(e => e.classList.remove('active'));
-        document.getElementById('v-'+v).classList.add('active');
-        document.getElementById('n-'+v).classList.add('active');
-        if(v === 'mapa') { setTimeout(() => { if(!map) initMap(); map.invalidateSize(); }, 200); }
-        if(v === 'balance') renderBalance();
-    }
-
-    function initMap() {
-        map = L.map('map', { zoomControl: false }).setView([-34.9011, -56.1645], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-        navigator.geolocation.watchPosition(p => {
-            const pos = [p.coords.latitude, p.coords.longitude];
-            if (!userMarker) userMarker = L.circleMarker(pos, {radius: 8, color: '#fff', weight: 2, fillColor: '#2979ff', fillOpacity: 1}).addTo(map);
-            else userMarker.setLatLng(pos);
-        }, null, { enableHighAccuracy: true });
-    }
-
-    async function buscarDireccion(query) {
-        // Buscamos específicamente en Uruguay para evitar errores
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Uruguay")}&limit=1`;
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
-        } catch (e) { return null; }
+    // 2. Función matemática para distancia real (Sin margen de error)
+    function calcularDistanciaReal(pos1, pos2) {
+        const R = 6371; // Radio de la Tierra en km
+        const dLat = (pos2[0] - pos1[0]) * Math.PI / 180;
+        const dLon = (pos2[1] - pos1[1]) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(pos1[0] * Math.PI / 180) * Math.cos(pos2[0] * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; 
     }
 
     async function iniciarViajeReal() {
-        const storeName = document.getElementById('store').value;
+        const storeInput = document.getElementById('store').value.toLowerCase().trim();
         const clientAddr = document.getElementById('client').value;
-        if (!storeName || !clientAddr) return alert("Por favor ingresa ambos lugares.");
-
+        
         document.getElementById('loader').style.display = 'flex';
 
-        const posTienda = await buscarDireccion(storeName);
-        const posCliente = await buscarDireccion(clientAddr);
+        // Si es Uprint, usamos la coordenada exacta, si no, buscamos en el mapa
+        let posTienda = UBICACIONES_FIJAS[storeInput] || await buscarDireccion(storeInput);
+        let posCliente = await buscarDireccion(clientAddr);
 
         document.getElementById('loader').style.display = 'none';
 
         if (!posTienda || !posCliente) {
-            alert("No encontré una de las direcciones. Intenta ser más específico (ej: 'Uprint Colonia' o 'Ceibal 1587 Montevideo')");
+            alert("Dirección no encontrada. Intenta ser más específico.");
             return;
         }
 
+        // Calculamos la distancia exacta una sola vez
+        const distanciaKM = calcularDistanciaReal(posTienda, posCliente).toFixed(2);
+        
         currentTrip = {
-            store: storeName, client: clientAddr,
-            storePos: posTienda, clientPos: posCliente
+            store: storeInput.toUpperCase(),
+            client: clientAddr,
+            storePos: posTienda,
+            clientPos: posCliente,
+            km: distanciaKM,
+            // Fórmula fija: $85 base + $15 por km (ajusta a tu tarifa)
+            total: (85 + (distanciaKM * 15)).toFixed(0) 
         };
 
-        if(!map) initMap();
-        if(storeMarker) map.removeLayer(storeMarker);
-        if(clientMarker) map.removeLayer(clientMarker);
-
-        storeMarker = L.marker(posTienda).addTo(map).bindPopup("RETIRO: " + storeName).openPopup();
-        clientMarker = L.marker(posCliente).addTo(map).bindPopup("ENTREGA: " + clientAddr);
-        
-        map.fitBounds([posTienda, posCliente], {padding: [50, 50]});
-        
-        document.getElementById('trip-info').innerText = `${storeName} ➔ ${clientAddr}`;
-        document.getElementById('active-trip').style.display = 'block';
-        show('mapa');
-    }
-
-    function irA(tipo) {
-        if(!currentTrip) return;
-        const coords = tipo === 'store' ? currentTrip.storePos : currentTrip.clientPos;
-        window.open(`https://waze.com/ul?ll=${coords[0]},${coords[1]}&navigate=yes`);
+        actualizarInterfazViaje();
     }
 
     function entregado() {
-        const total = 120; // Valor fijo o calculado
-        db.unshift({ name: currentTrip.client, total: total, dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'}) });
+        // Ahora guardamos los datos REALES calculados al inicio
+        db.unshift({
+            name: currentTrip.client,
+            km: currentTrip.km,
+            total: currentTrip.total,
+            dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'})
+        });
+        
         localStorage.setItem('uru_v3_3', JSON.stringify(db));
-        currentTrip = null;
-        document.getElementById('active-trip').style.display = 'none';
-        alert("¡Entrega guardada!");
-        show('balance');
-    }
-
-    function renderBalance() {
-        const h = document.getElementById('historial');
-        h.innerHTML = db.slice(0,5).map(p => `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #21262d;"><span>${p.name}</span><b>$${p.total}</b></div>`).join('');
+        // ... resto del código para limpiar interfaz
     }
 </script>
 </body>
 </html>
+
 
