@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>UruDeliv Pro v3.2</title>
+    <title>UruDeliv Pro v3.3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -11,78 +11,65 @@
         :root { --bg: #05070a; --card: #12151c; --accent: #2979ff; --text: #f0f2f5; --dim: #8b949e; --nav-h: 85px; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
         .header { padding: 15px 20px; font-size: 20px; font-weight: 800; background: var(--card); border-bottom: 1px solid #21262d; flex-shrink: 0; }
         .main-container { flex: 1; position: relative; overflow: hidden; }
-        
         .view { display: none; height: 100%; width: 100%; padding: 20px; overflow-y: auto; padding-bottom: var(--nav-h); }
         .view.active { display: block; }
-        
-        /* Ajuste Mapa */
         #v-mapa { padding: 0; }
         #map { height: 100%; width: 100%; background: var(--bg); }
-
         .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #21262d; margin-bottom: 20px; }
-        h3 { margin-top: 0; font-size: 12px; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
-        
+        h3 { margin-top: 0; font-size: 11px; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
         input { width: 100%; padding: 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 10px; outline: none; }
-        
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-blue { background: var(--accent); color: white; }
         .btn-orange { background: #ff9800; color: white; }
         .btn-green { background: #238636; color: white; }
         .btn-finish { background: #f44336; color: white; width: 100%; }
-
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: var(--card); display: flex; border-top: 1px solid #21262d; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--dim); font-size: 11px; }
         .nav-item.active { color: var(--accent); font-weight: bold; }
         .nav-icon { font-size: 24px; margin-bottom: 2px; }
-
-        .p-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #21262d; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; color: white; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
+<div id="loader" class="loading-overlay">Buscando direcciones precisas...</div>
 <div class="header">UruDeliv <span style="color:var(--accent)">PRO</span></div>
 
 <div class="main-container">
     <div id="v-pedidos" class="view active">
         <div class="card">
             <h3>📍 Nuevo Reparto</h3>
-            <input type="text" id="store" placeholder="Nombre de la Tienda">
-            <input type="text" id="client" placeholder="Dirección del Cliente">
-            <button class="btn btn-blue" onclick="iniciarViaje()">CARGAR RUTA</button>
+            <input type="text" id="store" placeholder="Local de Retiro (Ej: Uprint)">
+            <input type="text" id="client" placeholder="Destino (Ej: Ceibal 1587)">
+            <button class="btn btn-blue" onclick="iniciarViajeReal()">CARGAR RUTA REAL</button>
         </div>
-        
         <div id="active-trip" class="card" style="display:none; border-left: 5px solid #4ade80;">
-            <p id="trip-info" style="font-weight:bold; margin-top:0;"></p>
+            <p id="trip-info" style="font-weight:bold; margin-top:0; color: #4ade80;"></p>
             <div class="btn-group">
-                <button class="btn btn-orange" onclick="irATienda()">🛒 IR A TIENDA</button>
-                <button class="btn btn-green" onclick="irACliente()">🎁 IR A CLIENTE</button>
+                <button class="btn btn-orange" onclick="irA('store')">🛒 WAZE RETIRO</button>
+                <button class="btn btn-green" onclick="irA('client')">🎁 WAZE ENTREGA</button>
             </div>
-            <button class="btn btn-finish" onclick="entregado()">FINALIZAR Y COBRAR</button>
+            <button class="btn btn-finish" onclick="entregado()">FINALIZAR ENTREGA</button>
         </div>
     </div>
-
-    <div id="v-mapa" class="view">
-        <div id="map"></div>
-    </div>
-
+    <div id="v-mapa" class="view"><div id="map"></div></div>
     <div id="v-balance" class="view">
         <div class="card"><div style="height:150px"><canvas id="chart"></canvas></div></div>
-        <div class="card"><h3>Historial Reciente</h3><div id="historial"></div></div>
+        <div class="card"><h3>Historial</h3><div id="historial"></div></div>
     </div>
 </div>
 
 <div class="nav-bar">
     <div class="nav-item active" id="n-pedidos" onclick="show('pedidos')"><span class="nav-icon">📋</span>Pedidos</div>
     <div class="nav-item" id="n-mapa" onclick="show('mapa')"><span class="nav-icon">📍</span>Mapa</div>
-    <div class="nav-item" id="n-balance" onclick="show('balance')"><span class="nav-icon">📊</span>Balance</div>
+    <div id="n-balance" class="nav-item" onclick="show('balance')"><span class="nav-icon">📊</span>Balance</div>
 </div>
 
 <script>
-    let db = JSON.parse(localStorage.getItem('uru_v3_2')) || [];
+    let db = JSON.parse(localStorage.getItem('uru_v3_3')) || [];
     let map, userMarker, storeMarker, clientMarker;
     let currentTrip = null;
     let myChart = null;
@@ -91,113 +78,87 @@
         document.querySelectorAll('.view, .nav-item').forEach(e => e.classList.remove('active'));
         document.getElementById('v-'+v).classList.add('active');
         document.getElementById('n-'+v).classList.add('active');
-        
-        if(v === 'mapa') {
-            setTimeout(() => {
-                if(!map) initMap();
-                map.invalidateSize(); // FIX: Arregla el mapa cortado
-            }, 200);
-        }
+        if(v === 'mapa') { setTimeout(() => { if(!map) initMap(); map.invalidateSize(); }, 200); }
         if(v === 'balance') renderBalance();
     }
 
     function initMap() {
         map = L.map('map', { zoomControl: false }).setView([-34.9011, -56.1645], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-        
         navigator.geolocation.watchPosition(p => {
             const pos = [p.coords.latitude, p.coords.longitude];
-            if (!userMarker) {
-                // FIX: CircleMarker para que no cambie de tamaño visual con el zoom
-                userMarker = L.circleMarker(pos, {
-                    radius: 8, color: '#fff', weight: 2, fillColor: '#2979ff', fillOpacity: 1
-                }).addTo(map);
-            } else {
-                userMarker.setLatLng(pos);
-            }
+            if (!userMarker) userMarker = L.circleMarker(pos, {radius: 8, color: '#fff', weight: 2, fillColor: '#2979ff', fillOpacity: 1}).addTo(map);
+            else userMarker.setLatLng(pos);
         }, null, { enableHighAccuracy: true });
     }
 
-    function iniciarViaje() {
-        const s = document.getElementById('store').value;
-        const c = document.getElementById('client').value;
-        if (!s || !c) return alert("Completa los datos");
-
-        navigator.geolocation.getCurrentPosition(p => {
-            const lat = p.coords.latitude;
-            const lon = p.coords.longitude;
-            
-            // Simulación de ubicaciones cercanas para el mapa
-            currentTrip = {
-                store: s, client: c,
-                startPos: [lat, lon],
-                storePos: [lat + 0.004, lon + 0.004],
-                clientPos: [lat + 0.009, lon - 0.003]
-            };
-
-            if(storeMarker) map.removeLayer(storeMarker);
-            if(clientMarker) map.removeLayer(clientMarker);
-
-            if(map) {
-                storeMarker = L.marker(currentTrip.storePos).addTo(map).bindPopup("RETIRO: " + s);
-                clientMarker = L.marker(currentTrip.clientPos).addTo(map).bindPopup("ENTREGA: " + c);
-                map.fitBounds([currentTrip.storePos, currentTrip.clientPos, [lat, lon]], {padding: [50, 50]});
-            }
-            
-            document.getElementById('trip-info').innerText = `${s} ➔ ${c}`;
-            document.getElementById('active-trip').style.display = 'block';
-            alert("Ruta cargada. Usa los botones para navegar.");
-        });
+    async function buscarDireccion(query) {
+        // Buscamos específicamente en Uruguay para evitar errores
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Uruguay")}&limit=1`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
+        } catch (e) { return null; }
     }
 
-    function irATienda() {
-        if(!currentTrip) return;
-        window.open(`https://waze.com/ul?ll=${currentTrip.storePos[0]},${currentTrip.storePos[1]}&navigate=yes`);
+    async function iniciarViajeReal() {
+        const storeName = document.getElementById('store').value;
+        const clientAddr = document.getElementById('client').value;
+        if (!storeName || !clientAddr) return alert("Por favor ingresa ambos lugares.");
+
+        document.getElementById('loader').style.display = 'flex';
+
+        const posTienda = await buscarDireccion(storeName);
+        const posCliente = await buscarDireccion(clientAddr);
+
+        document.getElementById('loader').style.display = 'none';
+
+        if (!posTienda || !posCliente) {
+            alert("No encontré una de las direcciones. Intenta ser más específico (ej: 'Uprint Colonia' o 'Ceibal 1587 Montevideo')");
+            return;
+        }
+
+        currentTrip = {
+            store: storeName, client: clientAddr,
+            storePos: posTienda, clientPos: posCliente
+        };
+
+        if(!map) initMap();
+        if(storeMarker) map.removeLayer(storeMarker);
+        if(clientMarker) map.removeLayer(clientMarker);
+
+        storeMarker = L.marker(posTienda).addTo(map).bindPopup("RETIRO: " + storeName).openPopup();
+        clientMarker = L.marker(posCliente).addTo(map).bindPopup("ENTREGA: " + clientAddr);
+        
+        map.fitBounds([posTienda, posCliente], {padding: [50, 50]});
+        
+        document.getElementById('trip-info').innerText = `${storeName} ➔ ${clientAddr}`;
+        document.getElementById('active-trip').style.display = 'block';
+        show('mapa');
     }
 
-    function irACliente() {
+    function irA(tipo) {
         if(!currentTrip) return;
-        window.open(`https://waze.com/ul?q=${encodeURIComponent(currentTrip.client)}&navigate=yes`);
+        const coords = tipo === 'store' ? currentTrip.storePos : currentTrip.clientPos;
+        window.open(`https://waze.com/ul?ll=${coords[0]},${coords[1]}&navigate=yes`);
     }
 
     function entregado() {
-        const km = (Math.random() * 5 + 1).toFixed(1); 
-        const total = (85 + (km * 7.5)).toFixed(0);
-        db.unshift({
-            name: currentTrip.client,
-            km: km,
-            total: total,
-            dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'})
-        });
-        localStorage.setItem('uru_v3_2', JSON.stringify(db));
+        const total = 120; // Valor fijo o calculado
+        db.unshift({ name: currentTrip.client, total: total, dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'}) });
+        localStorage.setItem('uru_v3_3', JSON.stringify(db));
         currentTrip = null;
         document.getElementById('active-trip').style.display = 'none';
-        document.getElementById('store').value = "";
-        document.getElementById('client').value = "";
-        alert(`¡Entregado! Ganancia: $${total}`);
+        alert("¡Entrega guardada!");
         show('balance');
     }
 
     function renderBalance() {
         const h = document.getElementById('historial');
-        h.innerHTML = db.slice(0,10).map(p => `
-            <div class="p-item">
-                <span>${p.name} (${p.km}km)</span>
-                <b style="color:#4ade80">$${p.total}</b>
-            </div>`).join('');
-
-        const ctx = document.getElementById('chart').getContext('2d');
-        if(myChart) myChart.destroy();
-        const dias = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
-        const montos = dias.map(d => db.filter(x => x.dia.includes(d)).reduce((a, b) => a + parseInt(b.total), 0));
-        
-        myChart = new Chart(ctx, {
-            type: 'bar',
-            data: { labels: dias, datasets: [{ data: montos, backgroundColor: '#2979ff', borderRadius: 6 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-            scales: { y: { beginAtZero: true, grid: { color: '#21262d' } }, x: { grid: { display: false } } } }
-        });
+        h.innerHTML = db.slice(0,5).map(p => `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #21262d;"><span>${p.name}</span><b>$${p.total}</b></div>`).join('');
     }
 </script>
 </body>
 </html>
+
