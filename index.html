@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>UruDeliv PRO - Precisión Total</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>UruDeliv PRO - GPS Master</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --bg: #05070a; --card: #12151c; --accent: #2979ff; --text: #f0f2f5; --dim: #8b949e; --nav-h: 85px; }
-        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        .header { padding: 15px 20px; font-size: 20px; font-weight: 800; background: var(--card); border-bottom: 1px solid #21262d; }
-        .view { display: none; height: 100%; padding: 20px; overflow-y: auto; padding-bottom: 100px; }
+        :root { --bg: #05070a; --card: #12151c; --accent: #2979ff; --text: #f0f2f5; --dim: #8b949e; --nav-h: 80px; }
+        body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .header { padding: 15px 20px; font-size: 18px; font-weight: 800; background: var(--card); border-bottom: 1px solid #21262d; text-align: center; }
+        .view { display: none; height: 100%; padding: 15px; overflow-y: auto; padding-bottom: 100px; }
         .view.active { display: block; }
         #v-mapa { padding: 0; } #map { height: 100%; width: 100%; }
-        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #30363d; margin-bottom: 15px; }
-        input { width: 100%; padding: 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 10px; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 14px; margin-bottom: 10px; }
+        .card { background: var(--card); border-radius: 16px; padding: 18px; border: 1px solid #30363d; margin-bottom: 15px; }
+        input { width: 100%; padding: 15px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 10px; outline: none; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 14px; margin-bottom: 8px; transition: 0.2s; }
         .btn-blue { background: var(--accent); color: white; }
-        .btn-orange { background: #ff9800; color: white; }
-        .btn-green { background: #238636; color: white; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: var(--nav-h); background: var(--card); display: flex; border-top: 1px solid #21262d; }
+        .btn-waze-store { background: #f59e0b; color: #000; }
+        .btn-waze-client { background: #10b981; color: #000; }
+        .btn-red { background: #ef4444; color: white; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: var(--nav-h); background: var(--card); display: flex; border-top: 1px solid #21262d; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--dim); font-size: 11px; }
         .nav-item.active { color: var(--accent); }
     </style>
@@ -33,14 +33,17 @@
     <div class="card">
         <input type="text" id="store" placeholder="Local (ej: Uprint)">
         <input type="text" id="client" placeholder="Destino (ej: Ceibal 1587)">
-        <button class="btn btn-blue" onclick="procesarViaje()">CARGAR RUTA EXACTA</button>
+        <button class="btn btn-blue" onclick="iniciarRuta()">CALCULAR DISTANCIA Y PRECIO</button>
     </div>
-    <div id="trip-box" class="card" style="display:none; border-left: 5px solid #2979ff;">
-        <h4 id="info-puntos" style="margin:0"></h4>
-        <h2 id="info-stats" style="margin: 10px 0; color: #4ade80;"></h2>
-        <button class="btn btn-orange" onclick="waze('s')">WAZE A RETIRO</button>
-        <button class="btn btn-green" onclick="waze('c')">WAZE A ENTREGA</button>
-        <button class="btn" style="background:#f44336; color:white;" onclick="finalizar()">ENTREGADO</button>
+
+    <div id="active-trip" class="card" style="display:none; border-left: 5px solid var(--accent);">
+        <p id="t-info" style="margin:0; font-weight:bold;"></p>
+        <h2 id="t-stats" style="margin:10px 0; color:#4ade80;"></h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button class="btn btn-waze-store" onclick="navegar('s')">WAZE TIENDA</button>
+            <button class="btn btn-waze-client" onclick="navegar('c')">WAZE CLIENTE</button>
+        </div>
+        <button class="btn btn-red" onclick="terminar()">FINALIZAR ENTREGA</button>
     </div>
 </div>
 
@@ -48,85 +51,107 @@
 <div id="v-balance" class="view"><div id="historial"></div></div>
 
 <div class="nav-bar">
-    <div class="nav-item active" onclick="show('pedidos')">📋 Pedidos</div>
-    <div class="nav-item" onclick="show('mapa')">📍 Mapa</div>
-    <div class="nav-item" onclick="show('balance')">📊 Balance</div>
+    <div class="nav-item active" onclick="show('pedidos')">📋<br>Pedidos</div>
+    <div class="nav-item" onclick="show('mapa')">📍<br>Mapa</div>
+    <div class="nav-item" onclick="show('balance')">📊<br>Balance</div>
 </div>
 
 <script>
-    // --- BASE DE DATOS MANUAL (SIN ERRORES) ---
-    const COORDENADAS = {
-        "uprint": { lat: -34.8987, lon: -56.1736, n: "Uprint (Colonia 2095)" },
-        "uprint colonia": { lat: -34.8987, lon: -56.1736, n: "Uprint (Colonia 2095)" },
-        "ceibal 1587": { lat: -34.8784, lon: -56.1724, n: "Ceibal 1587 (San Martín)" },
-        "ceibal 1587, montevideo": { lat: -34.8784, lon: -56.1724, n: "Ceibal 1587 (San Martín)" }
+    // BASE DE DATOS ESTRÉCTAMENTE VERIFICADA
+    const PUNTOS_MAESTROS = {
+        "uprint": { lat: -34.898844, lon: -56.173812, n: "Uprint (Colonia 2095)" },
+        "uprint colonia": { lat: -34.898844, lon: -56.173812, n: "Uprint (Colonia 2095)" }
     };
 
-    let trip = null;
+    let viaje = null;
     let map = null;
 
     function show(v) {
-        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.view, .nav-item').forEach(e => e.classList.remove('active'));
         document.getElementById('v-'+v).classList.add('active');
-        if(v==='mapa' && map) setTimeout(() => map.invalidateSize(), 200);
+        if(v === 'mapa' && map) setTimeout(() => map.invalidateSize(), 300);
+        if(v === 'balance') renderBalance();
     }
 
-    function procesarViaje() {
-        const sKey = document.getElementById('store').value.toLowerCase().trim();
-        const cKey = document.getElementById('client').value.toLowerCase().trim();
+    async function iniciarRuta() {
+        const sVal = document.getElementById('store').value.toLowerCase().trim();
+        const cVal = document.getElementById('client').value.trim();
 
-        const pS = COORDENADAS[sKey];
-        const pC = COORDENADAS[cKey];
+        if(!sVal || !cVal) return alert("Completa los campos");
 
-        if(!pS || !pC) {
-            alert("Error: Solo usa 'Uprint' y 'Ceibal 1587' para probar la precisión total ahora.");
-            return;
-        }
+        // Obtenemos coordenadas para el cálculo de KM interno
+        let pS = PUNTOS_MAESTROS[sVal] || await buscarInterno(sVal);
+        let pC = await buscarInterno(cVal);
 
-        // Distancia matemática fija (Haversine) - No puede variar
+        if(!pS || !pC) return alert("Dirección no encontrada. Intenta ser más específico.");
+
+        // Haversine exacto
         const R = 6371;
         const dLat = (pC.lat - pS.lat) * Math.PI / 180;
         const dLon = (pC.lon - pS.lon) * Math.PI / 180;
         const a = Math.sin(dLat/2)**2 + Math.cos(pS.lat*Math.PI/180)*Math.cos(pC.lat*Math.PI/180)*Math.sin(dLon/2)**2;
-        const dist = (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
-        
-        // Precio FIJO: $85 base + $10 por KM
-        const total = Math.round(85 + (dist * 10));
+        const dist = (R * 2 * Math.asin(Math.sqrt(a))).toFixed(1);
 
-        trip = { s: pS, c: pC, km: dist, precio: total };
+        // Tarifa sugerida: $90 Base + $12 por KM
+        const total = Math.round(90 + (dist * 12));
 
-        document.getElementById('info-puntos').innerText = `${pS.n} ➔ ${pC.n}`;
-        document.getElementById('info-stats').innerText = `${dist} km | $${total}`;
-        document.getElementById('trip-box').style.display = 'block';
+        viaje = { s: pS, sRaw: sVal, c: pC, cRaw: cVal, km: dist, precio: total };
 
-        initMap(pS, pC);
+        document.getElementById('t-info').innerText = `${pS.n || sVal} ➔ ${cVal}`;
+        document.getElementById('t-stats').innerText = `${dist} km | $${total}`;
+        document.getElementById('active-trip').style.display = 'block';
+
+        actualizarMapa(pS, pC);
     }
 
-    function initMap(s, c) {
+    async function buscarInterno(q) {
+        try {
+            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Montevideo, Uruguay")}&limit=1`);
+            const d = await r.json();
+            return d[0] ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) } : null;
+        } catch(e) { return null; }
+    }
+
+    function navegar(tipo) {
+        // AQUÍ ESTÁ EL TRUCO PROFESIONAL:
+        // Si es Uprint, mandamos la coordenada exacta guardada.
+        // Si es el cliente, mandamos el TEXTO para que Waze/Google Maps lo busque con su motor actualizado.
+        if(tipo === 's' && viaje.sRaw.includes("uprint")) {
+            window.open(`https://waze.com/ul?ll=${viaje.s.lat},${viaje.s.lon}&navigate=yes`);
+        } else {
+            const query = tipo === 's' ? viaje.sRaw : viaje.cRaw;
+            window.open(`https://waze.com/ul?q=${encodeURIComponent(query + ", Montevideo, Uruguay")}&navigate=yes`);
+        }
+    }
+
+    function actualizarMapa(s, c) {
         if(!map) {
             map = L.map('map', {zoomControl: false});
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
         }
         map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-        L.marker([s.lat, s.lon]).addTo(map).bindPopup("RETIRO");
-        L.marker([c.lat, c.lon]).addTo(map).bindPopup("ENTREGA");
-        map.fitBounds([[s.lat, s.lon], [c.lat, c.lon]], {padding: [50,50]});
-        show('mapa');
+        L.marker([s.lat, s.lon]).addTo(map);
+        L.marker([c.lat, c.lon]).addTo(map);
+        map.fitBounds([[s.lat, s.lon], [c.lat, c.lon]], {padding: [50, 50]});
     }
 
-    function waze(tipo) {
-        const p = tipo === 's' ? trip.s : trip.c;
-        window.open(`https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`);
-    }
-
-    function finalizar() {
-        const db = JSON.parse(localStorage.getItem('uru_p')) || [];
-        db.unshift({ n: trip.c.n, km: trip.km, total: trip.precio });
-        localStorage.setItem('uru_p', JSON.stringify(db));
+    function terminar() {
+        const db = JSON.parse(localStorage.getItem('uru_db')) || [];
+        db.unshift({ dest: viaje.cRaw, total: viaje.precio, fecha: new Date().toLocaleDateString() });
+        localStorage.setItem('uru_db', JSON.stringify(db));
         location.reload();
+    }
+
+    function renderBalance() {
+        const db = JSON.parse(localStorage.getItem('uru_db')) || [];
+        document.getElementById('historial').innerHTML = db.map(i => `
+            <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #30363d;">
+                <span>${i.dest}</span><b>$${i.total}</b>
+            </div>`).join('');
     }
 </script>
 </body>
 </html>
+
 
 
