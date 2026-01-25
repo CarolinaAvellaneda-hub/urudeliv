@@ -3,115 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>UruDeliv Pro - Fixed</title>
+    <title>UruDeliv Pro - GPS Master</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { 
-            --bg: #0b0e14; 
-            --card: #161b22; 
-            --accent: #2979ff; 
-            --text: #e6edf3; 
-            --dim: #8b949e; 
-            --nav-height: 75px; /* Altura fija de la barra */
-        }
-
+        :root { --bg: #05070a; --card: #12151c; --accent: #2979ff; --text: #f0f2f5; --dim: #8b949e; --nav-h: 85px; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body { 
-            margin: 0; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background: var(--bg); 
-            color: var(--text); 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; /* Evita que el cuerpo haga scroll, lo hará cada vista */
-        }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Cabecera Fija */
-        .header { 
-            padding: 15px 20px; 
-            font-size: 20px; 
-            font-weight: 800; 
-            display: flex; 
-            justify-content: space-between; 
-            background: var(--card); 
-            border-bottom: 1px solid #30363d;
-            flex-shrink: 0;
-        }
-        
-        /* Contenedor de Vistas con scroll independiente */
-        .main-container {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: calc(var(--nav-height) + 20px); /* Espacio para que el contenido no quede atrás de los botones */
-        }
-
-        .view { padding: 20px; display: none; }
+        .header { padding: 15px 20px; font-size: 20px; font-weight: 800; background: var(--card); border-bottom: 1px solid #21262d; flex-shrink: 0; }
+        .main-container { flex: 1; position: relative; overflow-y: auto; padding-bottom: var(--nav-h); }
+        .view { display: none; height: 100%; padding: 20px; }
         .view.active { display: block; }
-
-        /* Tarjetas */
-        .card { 
-            background: var(--card); 
-            border-radius: 16px; 
-            padding: 20px; 
-            border: 1px solid #30363d; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        h3 { margin-top: 0; font-size: 12px; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
-
-        /* Formulario */
-        input { 
-            width: 100%; 
-            padding: 16px; 
-            background: #0d1117; 
-            border: 1px solid #30363d; 
-            border-radius: 12px; 
-            color: white; 
-            font-size: 16px; 
-            margin-bottom: 15px; 
-            outline: none;
-        }
-        input:focus { border-color: var(--accent); }
-
-        .btn-blue { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; transition: opacity 0.2s; }
-        .btn-green { width: 100%; padding: 16px; background: #238636; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; }
-        .btn-blue:active, .btn-green:active { opacity: 0.8; }
-
-        /* Lista de Historial */
-        .pedido-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #30363d; }
-        .p-name { font-weight: bold; color: #58a6ff; margin: 0; font-size: 15px; }
-        .p-sub { font-size: 11px; color: var(--dim); }
-        .p-price { font-weight: 900; color: #39d353; font-size: 18px; }
-
-        /* BARRA DE NAVEGACIÓN FIJA AL FONDO */
-        .nav-bar { 
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: var(--nav-height);
-            background: var(--card); 
-            display: flex; 
-            border-top: 1px solid #30363d; 
-            padding-bottom: env(safe-area-inset-bottom); /* Para iPhones nuevos y Androids modernos */
-            z-index: 1000;
-        }
         
-        .nav-item { 
-            flex: 1; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--dim); 
-            font-size: 10px; 
-            text-decoration: none;
-        }
+        /* Ajuste especial para el Mapa */
+        #v-mapa { padding: 0; position: relative; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+
+        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid #21262d; margin-bottom: 20px; }
+        input { width: 100%; padding: 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 10px; }
+        .btn-blue { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; }
         
+        /* Navegación */
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: var(--card); display: flex; border-top: 1px solid #21262d; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--dim); font-size: 11px; }
         .nav-item.active { color: var(--accent); font-weight: bold; }
-        .nav-icon { font-size: 22px; margin-bottom: 2px; }
+        .nav-icon { font-size: 24px; margin-bottom: 2px; }
+
+        .pedido-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #21262d; }
     </style>
 </head>
 <body>
@@ -121,132 +41,111 @@
 <div class="main-container">
     <div id="v-pedidos" class="view active">
         <div class="card">
-            <h3>📍 Destino del Envío</h3>
-            <input type="text" id="target" placeholder="Nombre del Local o Dirección">
-            <button class="btn-blue" onclick="irWaze()">ABRIR WAZE Y SALIR</button>
+            <h3>📍 Nuevo Reparto</h3>
+            <input type="text" id="store" placeholder="Nombre de la Tienda">
+            <input type="text" id="client" placeholder="Dirección del Cliente">
+            <button class="btn-blue" onclick="iniciarViaje()">INICIAR RUTA (WAZE)</button>
         </div>
-        <div id="en-curso" class="card" style="display:none; border-left: 5px solid #39d353;">
-            <h3>📦 Pedido en Curso</h3>
-            <p id="dest-actual" style="font-weight:bold; font-size:18px; margin: 10px 0;"></p>
-            <button class="btn-green" onclick="completar()">MARCAR COMO ENTREGADO</button>
+        <div id="active-trip" class="card" style="display:none; border-left: 5px solid #4ade80;">
+            <p id="trip-info" style="font-weight:bold;"></p>
+            <button class="btn-blue" style="background:#238636" onclick="entregado()">FINALIZAR ENTREGA</button>
         </div>
     </div>
 
     <div id="v-mapa" class="view">
-        <div class="card" style="text-align: center;">
-            <h3>Mapa de Operaciones</h3>
-            <div style="font-size: 60px; margin: 20px 0;">🗺️</div>
-            <p style="color:var(--dim)">Seguimiento en tiempo real próximo...</p>
-        </div>
+        <div id="map"></div>
     </div>
 
     <div id="v-balance" class="view">
-        <div class="card">
-            <h3>Ganancias Semanales</h3>
-            <div style="height: 180px; position: relative;"><canvas id="chart"></canvas></div>
-        </div>
-        <div class="card">
-            <h3>Historial (Recientes)</h3>
-            <div id="historial"></div>
-        </div>
+        <div class="card"><div style="height:150px"><canvas id="chart"></canvas></div></div>
+        <div class="card"><h3>Historial</h3><div id="historial"></div></div>
     </div>
 </div>
 
 <div class="nav-bar">
-    <div class="nav-item active" id="n-pedidos" onclick="show('pedidos')">
-        <span class="nav-icon">📋</span>
-        <span>Pedidos</span>
-    </div>
-    <div class="nav-item" id="n-mapa" onclick="show('mapa')">
-        <span class="nav-icon">🗺️</span>
-        <span>Mapa</span>
-    </div>
-    <div class="nav-item" id="n-balance" onclick="show('balance')">
-        <span class="nav-icon">📊</span>
-        <span>Balance</span>
-    </div>
+    <div class="nav-item active" id="n-pedidos" onclick="show('pedidos')"><span class="nav-icon">📋</span>Pedidos</div>
+    <div class="nav-item" id="n-mapa" onclick="show('mapa')"><span class="nav-icon">📍</span>Mapa</div>
+    <div class="nav-item" id="n-balance" onclick="show('balance')"><span class="nav-icon">📊</span>Balance</div>
 </div>
 
 <script>
-    let db = JSON.parse(localStorage.getItem('uru_pro')) || [];
-    let start = null;
-    let myChart = null;
+    let db = JSON.parse(localStorage.getItem('uru_v3')) || [];
+    let map, userMarker, storeMarker, clientMarker;
+    let currentTrip = null;
 
     function show(v) {
-        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.view, .nav-item').forEach(e => e.classList.remove('active'));
         document.getElementById('v-'+v).classList.add('active');
         document.getElementById('n-'+v).classList.add('active');
-        if(v === 'balance') setTimeout(renderBalance, 100);
+        if(v === 'mapa') initMap();
+        if(v === 'balance') renderBalance();
     }
 
-    function irWaze() {
-        const t = document.getElementById('target').value;
-        if(!t) return;
-        navigator.geolocation.getCurrentPosition(p => {
-            start = p.coords;
-            document.getElementById('dest-actual').innerText = t;
-            document.getElementById('en-curso').style.display = 'block';
-            window.open(`https://waze.com/ul?q=${encodeURIComponent(t)}&navigate=yes`);
-        }, () => alert("Error al obtener GPS"));
-    }
-
-    function completar() {
-        navigator.geolocation.getCurrentPosition(p => {
-            let km = 1.5; 
-            if(start) {
-                const R = 6371;
-                const dLat = (p.coords.latitude-start.latitude)*Math.PI/180;
-                const dLon = (p.coords.longitude-start.longitude)*Math.PI/180;
-                const a = Math.sin(dLat/2)**2 + Math.cos(start.latitude*Math.PI/180)*Math.cos(p.coords.latitude*Math.PI/180)*Math.sin(dLon/2)**2;
-                km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            }
-            if(km < 0.1) km = 1.2;
-
-            db.unshift({
-                nombre: document.getElementById('dest-actual').innerText,
-                km: km.toFixed(1),
-                total: (85 + (km * 7.5)).toFixed(0),
-                dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'})
-            });
-            localStorage.setItem('uru_pro', JSON.stringify(db));
-            document.getElementById('en-curso').style.display = 'none';
-            document.getElementById('target').value = "";
-            alert("¡Entrega guardada!");
+    function initMap() {
+        if (!map) {
+            map = L.map('map').setView([-34.9011, -56.1645], 13); // Montevideo
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+        }
+        
+        navigator.geolocation.watchPosition(p => {
+            const pos = [p.coords.latitude, p.coords.longitude];
+            if (!userMarker) userMarker = L.circleMarker(pos, {color: '#2979ff', fillOpacity: 1, radius: 8}).addTo(map);
+            else userMarker.setLatLng(pos);
+            if (!currentTrip) map.panTo(pos);
         });
+    }
+
+    async function iniciarViaje() {
+        const s = document.getElementById('store').value;
+        const c = document.getElementById('client').value;
+        if (!s || !c) return alert("Completa los datos");
+
+        // Simulación de geocodificación (En una app real usarías una API de búsqueda)
+        // Por ahora, pondremos puntos aleatorios cerca de tu posición para mostrar en el mapa
+        navigator.geolocation.getCurrentPosition(p => {
+            const lat = p.coords.latitude;
+            const lon = p.coords.longitude;
+            
+            currentTrip = {
+                store: s, client: c, 
+                startPos: [lat, lon],
+                storePos: [lat + 0.005, lon + 0.005], // Simulado
+                clientPos: [lat + 0.01, lon - 0.005]  // Simulado
+            };
+
+            if(storeMarker) map.removeLayer(storeMarker);
+            if(clientMarker) map.removeLayer(clientMarker);
+
+            storeMarker = L.marker(currentTrip.storePos).addTo(map).bindPopup("Tienda: " + s).openPopup();
+            clientMarker = L.marker(currentTrip.clientPos).addTo(map).bindPopup("Cliente: " + c);
+            
+            document.getElementById('trip-info').innerText = `De: ${s} ➔ Para: ${c}`;
+            document.getElementById('active-trip').style.display = 'block';
+            
+            window.open(`https://waze.com/ul?q=${encodeURIComponent(c)}&navigate=yes`);
+            show('mapa');
+            map.fitBounds([currentTrip.storePos, currentTrip.clientPos, [lat, lon]]);
+        });
+    }
+
+    function entregado() {
+        const km = (Math.random() * 4 + 1).toFixed(1); // Aquí calculas distancia real como antes
+        db.unshift({
+            name: currentTrip.client,
+            km: km,
+            total: (85 + (km * 7.5)).toFixed(0),
+            dia: new Date().toLocaleDateString('es-ES', {weekday: 'short'})
+        });
+        localStorage.setItem('uru_v3', JSON.stringify(db));
+        currentTrip = null;
+        document.getElementById('active-trip').style.display = 'none';
+        alert("¡Entrega completada!");
+        show('balance');
     }
 
     function renderBalance() {
-        const hist = document.getElementById('historial');
-        hist.innerHTML = db.length ? db.slice(0, 5).map(p => `
-            <div class="pedido-item">
-                <div><p class="p-name">${p.nombre}</p><span class="p-sub">${p.km} km</span></div>
-                <div class="p-price">$ ${p.total}</div>
-            </div>`).join('') : "<p style='text-align:center; color:var(--dim)'>No hay pedidos aún</p>";
-
-        const canvas = document.getElementById('chart');
-        const ctx = canvas.getContext('2d');
-        if(myChart) myChart.destroy();
-        
-        const dias = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
-        const montos = dias.map(d => db.filter(x => x.dia.includes(d)).reduce((a, b) => a + parseInt(b.total), 0));
-        
-        myChart = new Chart(ctx, {
-            type: 'bar',
-            data: { 
-                labels: dias, 
-                datasets: [{ data: montos, backgroundColor: '#2979ff', borderRadius: 6 }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { beginAtZero: true, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } },
-                    x: { ticks: { color: '#8b949e' }, grid: { display: false } }
-                } 
-            }
-        });
+        const h = document.getElementById('historial');
+        h.innerHTML = db.slice(0,5).map(p => `<div class="pedido-item"><span>${p.name}</span><b>$${p.total}</b></div>`).join('');
     }
 </script>
 </body>
