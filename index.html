@@ -3,110 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UruDeliv Fix v4.0</title>
+    <title>UruDeliv TOTAL FIX</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --bg: #0a0c10; --card: #161b22; --accent: #2f81f7; --text: #c9d1d9; }
-        body { margin: 0; font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .header { padding: 15px; text-align: center; background: var(--card); border-bottom: 1px solid #30363d; font-weight: bold; }
-        .content { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
-        .card { background: var(--card); border-radius: 12px; padding: 15px; border: 1px solid #30363d; margin-bottom: 15px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: white; box-sizing: border-box; }
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        .btn-blue { background: var(--accent); color: white; }
-        .btn-uprint { background: transparent; border: 2px solid #f59e0b; color: #f59e0b; margin-bottom: 15px; font-size: 16px; }
-        #map { height: 250px; border-radius: 12px; margin-top: 10px; display: none; border: 1px solid #30363d; }
-        .waze-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        :root { --bg: #0d1117; --card: #161b22; --accent: #58a6ff; --text: #c9d1d9; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; }
+        .card { background: var(--card); border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 15px; }
+        .btn { width: 100%; padding: 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 16px; }
+        .btn-uprint { background: #f59e0b; color: #000; border: 2px solid #fff; }
+        .btn-calc { background: #238636; color: white; }
+        input { width: 100%; padding: 15px; background: #010409; border: 1px solid #30363d; color: white; border-radius: 8px; box-sizing: border-box; margin-bottom: 15px; }
+        #map { height: 200px; border-radius: 10px; margin: 15px 0; display: none; }
+        .waze-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .btn-waze { background: #33ccff; color: #000; }
     </style>
 </head>
 <body>
 
-<div class="header">UruDeliv PRO <span style="color:var(--accent)">FIXED</span></div>
-
-<div class="content">
     <div class="card">
-        <p style="margin:0 0 10px 0; font-size: 12px; color: #8b949e;">PASO 1: TOCAR EL LOCAL</p>
-        <button class="btn btn-uprint" onclick="fijarUprint()">📍 USAR UPRINT (Colonia 2095)</button>
+        <h3 style="margin-top:0">1. ACTIVAR LOCAL</h3>
+        <button class="btn btn-uprint" onclick="activarUprint()">📍 UPRINT (Colonia 2095)</button>
         
-        <p style="margin:10px 0; font-size: 12px; color: #8b949e;">PASO 2: DIRECCIÓN CLIENTE</p>
-        <input type="text" id="client" placeholder="Ej: Ceibal 1587">
-        <button class="btn btn-blue" onclick="calcularTotal()">CALCULAR RUTA REAL</button>
+        <h3>2. DESTINO</h3>
+        <input type="text" id="dest" placeholder="Ej: Ceibal 1587">
+        <button class="btn btn-calc" onclick="generarRuta()">CALCULAR PRECIO EXACTO</button>
     </div>
 
-    <div id="result" class="card" style="display:none;">
+    <div id="resultado" class="card" style="display:none">
         <div id="map"></div>
-        <h2 id="stats" style="text-align:center; color:#4ade80; margin:15px 0;"></h2>
-        <div class="waze-box">
-            <button class="btn btn-waze" onclick="navegar('s')">WAZE TIENDA</button>
-            <button class="btn btn-waze" onclick="navegar('c')">WAZE CLIENTE</button>
+        <h2 id="stats" style="text-align:center; color:#58a6ff"></h2>
+        <div class="waze-grid">
+            <button class="btn btn-waze" onclick="waze('s')">WAZE TIENDA</button>
+            <button class="btn btn-waze" onclick="waze('c')">WAZE CLIENTE</button>
         </div>
-        <button class="btn" style="background:#30363d; color:white; margin-top:10px;" onclick="location.reload()">NUEVO PEDIDO</button>
+        <button class="btn" style="background:#444; color:white" onclick="location.reload()">BORRAR TODO</button>
     </div>
-</div>
 
 <script>
-    // COORDENADAS SATELITALES VERIFICADAS (Colonia y Joaquin Requena)
-    const UPRINT_GPS = { lat: -34.89882, lon: -56.17382, n: "Uprint (Colonia 2095)" };
+    // ESTAS COORDENADAS SON EL CENTRO EXACTO DE UPRINT EN COLONIA 2095
+    const GPS_UPRINT = { lat: -34.898835, lon: -56.173822 };
     
-    let origen = null;
-    let destino = null;
-    let map = null;
+    let pSalida = null;
+    let pLlegada = null;
+    let mapa = null;
 
-    function fijarUprint() {
-        origen = UPRINT_GPS;
-        alert("✅ UPRINT SELECCIONADO\nAhora ingresa el destino.");
+    function activarUprint() {
+        pSalida = GPS_UPRINT;
+        alert("✅ UPRINT CONFIGURADO EN COLONIA 2095");
     }
 
-    async function calcularTotal() {
-        const dVal = document.getElementById('client').value;
-        if (!origen) return alert("¡Toca el botón naranja de UPRINT primero!");
-        if (!dVal) return alert("Escribe la dirección del cliente");
+    async function generarRuta() {
+        const d = document.getElementById('dest').value;
+        if(!pSalida) return alert("Primero toca el botón de UPRINT");
+        if(!d) return alert("Escribe el destino");
 
-        // Buscar cliente
-        try {
-            const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dVal + ", Montevideo, Uruguay")}&limit=1`);
-            const data = await resp.json();
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(d + ", Montevideo, Uruguay")}&limit=1`);
+        const data = await r.json();
+
+        if(data[0]) {
+            pLlegada = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), n: d };
             
-            if (data.length > 0) {
-                destino = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), n: dVal };
-                
-                // Cálculo de KM
-                const R = 6371;
-                const dLat = (destino.lat - origen.lat) * Math.PI / 180;
-                const dLon = (destino.lon - origen.lon) * Math.PI / 180;
-                const a = Math.sin(dLat/2)**2 + Math.cos(origen.lat*Math.PI/180)*Math.cos(destino.lat*Math.PI/180)*Math.sin(dLon/2)**2;
-                const dist = (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
+            // Distancia (Haversine)
+            const R = 6371;
+            const dLat = (pLlegada.lat - pSalida.lat) * Math.PI / 180;
+            const dLon = (pLlegada.lon - pSalida.lon) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(pSalida.lat*Math.PI/180)*Math.cos(pLlegada.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+            const dist = (R * 2 * Math.asin(Math.sqrt(a))).toFixed(1);
 
-                // Mostrar resultados
-                document.getElementById('stats').innerText = `${dist} KM | $${Math.round(90 + dist*12)}`;
-                document.getElementById('result').style.display = 'block';
-                document.getElementById('map').style.display = 'block';
-                
-                dibujarMapa();
-            } else {
-                alert("No encontré esa calle. Prueba con las esquinas.");
-            }
-        } catch (e) { alert("Error de red"); }
-    }
+            document.getElementById('stats').innerText = `${dist} KM | $${Math.round(90 + dist*14)}`;
+            document.getElementById('resultado').style.display = 'block';
+            document.getElementById('map').style.display = 'block';
 
-    function dibujarMapa() {
-        if (map) map.remove();
-        map = L.map('map', {zoomControl: false});
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-        L.marker([origen.lat, origen.lon]).addTo(map);
-        L.marker([destino.lat, destino.lon]).addTo(map);
-        map.fitBounds([[origen.lat, origen.lon], [destino.lat, destino.lon]], {padding:[30,30]});
-    }
-
-    function navegar(tipo) {
-        const p = (tipo === 's') ? origen : destino;
-        // El secreto: Si es el cliente, que Waze lo busque por texto para ser más exacto.
-        if (tipo === 'c') {
-            window.open(`https://waze.com/ul?q=${encodeURIComponent(p.n + ", Montevideo, Uruguay")}&navigate=yes`);
+            if(mapa) mapa.remove();
+            mapa = L.map('map', {zoomControl: false});
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapa);
+            L.marker([pSalida.lat, pSalida.lon]).addTo(mapa);
+            L.marker([pLlegada.lat, pLlegada.lon]).addTo(mapa);
+            mapa.fitBounds([[pSalida.lat, pSalida.lon], [pLlegada.lat, pLlegada.lon]], {padding:[20,20]});
         } else {
-            window.open(`https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`);
+            alert("Dirección no encontrada");
+        }
+    }
+
+    function waze(tipo) {
+        if(tipo === 's') {
+            // FORMATO DE COORDENADA PURA PARA WAZE (SIN BUSCADOR)
+            window.open(`waze://?ll=${pSalida.lat},${pSalida.lon}&navigate=yes`);
+            // Respaldo por si no abre la app
+            setTimeout(() => {
+                window.open(`https://www.waze.com/ul?ll=${pSalida.lat},${pSalida.lon}&navigate=yes`);
+            }, 500);
+        } else {
+            window.open(`https://www.waze.com/ul?q=${encodeURIComponent(pLlegada.n + ", Montevideo, Uruguay")}&navigate=yes`);
         }
     }
 </script>
