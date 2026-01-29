@@ -32,9 +32,16 @@
         <button class="btn btn-calc" onclick="agregarParada()">+ AÑADIR A LA RUTA</button>
     </div>
 
-    <div id="contenedor-ruta" class="card" style="display:none">
+   <div id="contenedor-ruta" class="card" style="display:none">
         <h3 id="stats" style="text-align:center; color:var(--accent); margin: 5px 0;"></h3>
+        
+        <button class="btn" style="background: #6e40c9; color: white; margin-bottom: 10px;" onclick="optimizarRuta()">
+            🪄 OPTIMIZAR ORDEN LÓGICO
+        </button>
+
         <div id="lista-paradas"></div>
+        <div id="map"></div>
+        </div>
         
         <div id="map"></div>
 
@@ -169,7 +176,37 @@
         const url = `https://www.waze.com/ul?ll=${destino.lat},${destino.lon}&navigate=yes`;
         window.open(url, '_blank');
     }
+    function optimizarRuta() {
+    if (paradas.length < 2) return; // No hay nada que optimizar con una sola parada
+
+    let rutaOptimizada = [];
+    let copiaParadas = [...paradas];
+    let ubicacionActual = pSalida;
+
+    while (copiaParadas.length > 0) {
+        // Encontrar la parada más cercana a donde estoy parado ahora
+        let indiceCercano = 0;
+        let distanciaMinima = Infinity;
+
+        for (let i = 0; i < copiaParadas.length; i++) {
+            let d = calcularHaversine(ubicacionActual, copiaParadas[i]);
+            if (d < distanciaMinima) {
+                distanciaMinima = d;
+                indiceCercano = i;
+            }
+        }
+
+        // Mover la parada encontrada de la copia a la ruta optimizada
+        ubicacionActual = copiaParadas[indiceCercano];
+        rutaOptimizada.push(copiaParadas.splice(indiceCercano, 1)[0]);
+    }
+
+    paradas = rutaOptimizada;
+    actualizarApp();
+    alert("🚀 Ruta optimizada por cercanía");
+}
 </script>
 </body>
 </html>
+
 
