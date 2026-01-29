@@ -58,59 +58,59 @@
 
 <script>
     // BASE DE DATOS ESTRÉCTAMENTE VERIFICADA
-    const PUNTOS_MAESTROS = {
-        "uprint": { lat: -34.898844, lon: -56.173812, n: "Uprint (Colonia 2095)" },
-        "uprint colonia": { lat: -34.898844, lon: -56.173812, n: "Uprint (Colonia 2095)" }
-    };
+   const PUNTOS_MAESTROS = {
+    "uprint": { lat: -34.898844, lon: -56.173812, n: "Uprint (Colonia 2095)" },
+    "uprint colonia": { lat: -34.898844, lon: -56.173812, n: "Uprint (Colonia 2095)" }
+};
 
-    let viaje = null;
-    let map = null;
+async function iniciarRuta() {
+    const sVal = document.getElementById('store').value.toLowerCase().trim();
+    const cVal = document.getElementById('client').value.trim();
 
-    function show(v) {
-        document.querySelectorAll('.view, .nav-item').forEach(e => e.classList.remove('active'));
-        document.getElementById('v-'+v).classList.add('active');
-        if(v === 'mapa' && map) setTimeout(() => map.invalidateSize(), 300);
-        if(v === 'balance') renderBalance();
+    if(!sVal || !cVal) return alert("Completa los campos");
+
+    // FUERZA BRUTA: Si el texto contiene 'uprint', ignoramos cualquier búsqueda GPS
+    let pS;
+    if (sVal.includes("uprint")) {
+        pS = PUNTOS_MAESTROS["uprint"];
+    } else {
+        pS = await buscarInterno(sVal);
     }
 
-    async function iniciarRuta() {
-        const sVal = document.getElementById('store').value.toLowerCase().trim();
-        const cVal = document.getElementById('client').value.trim();
+    // Para el cliente, seguimos buscando pero agregando Montevideo Uruguay
+    let pC = await buscarInterno(cVal);
 
-        if(!sVal || !cVal) return alert("Completa los campos");
+    if(!pS || !pC) return alert("Dirección no encontrada. Intenta con 'Calle y Número'.");
 
-        // Obtenemos coordenadas para el cálculo de KM interno
-        let pS = PUNTOS_MAESTROS[sVal] || await buscarInterno(sVal);
-        let pC = await buscarInterno(cVal);
+    // Cálculo Haversine (Distancia en línea recta)
+    const R = 6371;
+    const dLat = (pC.lat - pS.lat) * Math.PI / 180;
+    const dLon = (pC.lon - pS.lon) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(pS.lat*Math.PI/180)*Math.cos(pC.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+    const dist = (R * 2 * Math.asin(Math.sqrt(a))).toFixed(1);
 
-        if(!pS || !pC) return alert("Dirección no encontrada. Intenta ser más específico.");
+    // Tarifa
+    const total = Math.round(90 + (dist * 12));
 
-        // Haversine exacto
-        const R = 6371;
-        const dLat = (pC.lat - pS.lat) * Math.PI / 180;
-        const dLon = (pC.lon - pS.lon) * Math.PI / 180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(pS.lat*Math.PI/180)*Math.cos(pC.lat*Math.PI/180)*Math.sin(dLon/2)**2;
-        const dist = (R * 2 * Math.asin(Math.sqrt(a))).toFixed(1);
+    viaje = { s: pS, sRaw: sVal, c: pC, cRaw: cVal, km: dist, precio: total };
 
-        // Tarifa sugerida: $90 Base + $12 por KM
-        const total = Math.round(90 + (dist * 12));
+    // Actualizar Interfaz
+    document.getElementById('t-info').innerText = `${pS.n} ➔ ${cVal}`;
+    document.getElementById('t-stats').innerText = `${dist} km | $${total}`;
+    document.getElementById('active-trip').style.display = 'block';
 
-        viaje = { s: pS, sRaw: sVal, c: pC, cRaw: cVal, km: dist, precio: total };
+    actualizarMapa(pS, pC);
+}
 
-        document.getElementById('t-info').innerText = `${pS.n || sVal} ➔ ${cVal}`;
-        document.getElementById('t-stats').innerText = `${dist} km | $${total}`;
-        document.getElementById('active-trip').style.display = 'block';
-
-        actualizarMapa(pS, pC);
-    }
-
-    async function buscarInterno(q) {
-        try {
-            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Montevideo, Uruguay")}&limit=1`);
-            const d = await r.json();
-            return d[0] ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) } : null;
-        } catch(e) { return null; }
-    }
+// Esta función es solo para el cliente ahora
+async function buscarInterno(q) {
+    try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Montevideo, Uruguay")}&limit=1`);
+        const d = await r.json();
+        // Si no encuentra nada, devolvemos null para que salte el alert
+        return d[0] ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) } : null;
+    } catch(e) { return null; }
+}
 
     function navegar(tipo) {
         // AQUÍ ESTÁ EL TRUCO PROFESIONAL:
@@ -152,6 +152,3 @@
 </script>
 </body>
 </html>
-
-
-
