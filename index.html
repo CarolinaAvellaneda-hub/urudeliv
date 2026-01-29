@@ -3,210 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UruDeliv Pro - Logística</title>
+    <title>UruDeliv Pro - FIX UBICACIÓN</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --bg: #0d1117; --card: #161b22; --accent: #58a6ff; --text: #c9d1d9; --success: #238636; --danger: #da3633; }
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 10px; }
+        :root { --bg: #0d1117; --card: #161b22; --accent: #58a6ff; --text: #c9d1d9; --success: #238636; --danger: #da3633; --purple: #8957e5; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); padding: 10px; }
         .card { background: var(--card); border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 12px; }
-        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; }
         .btn-uprint { background: #f59e0b; color: #000; margin-bottom: 15px; border: 2px solid #fff; }
-        .btn-calc { background: var(--success); color: white; margin-top: 5px; }
-        input { width: 100%; padding: 12px; background: #010409; border: 1px solid #30363d; color: white; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        #map { height: 250px; border-radius: 10px; margin: 15px 0; display: none; border: 1px solid #30363d; }
-        .stop-item { display: flex; justify-content: space-between; align-items: center; background: #21262d; padding: 10px; border-radius: 6px; margin-top: 8px; border-left: 4px solid var(--accent); }
-        .btn-del { background: var(--danger); color: white; padding: 5px 10px; width: auto; font-size: 12px; }
-        .waze-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .btn-opt { background: var(--purple); color: white; margin-bottom: 10px; }
+        .btn-calc { background: var(--success); color: white; }
+        input { width: 100%; padding: 12px; background: #010409; border: 1px solid #30363d; color: white; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; }
+        #map { height: 280px; border-radius: 10px; margin: 15px 0; display: none; border: 1px solid #30363d; }
+        .stop-item { display: flex; justify-content: space-between; align-items: center; background: #21262d; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 13px; }
+        .waze-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .btn-waze { background: #33ccff; color: #000; }
-        .badge { background: var(--accent); color: #000; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <button class="btn btn-uprint" onclick="activarUprint()">📍 ACTIVAR ORIGEN: UPRINT</button>
-        
-        <label style="display:block; margin-bottom: 8px; font-size: 12px; color: #8b949e;">AÑADIR DESTINOS DE ENTREGA:</label>
-        <input type="text" id="dest" placeholder="Ej: Ceibal 1587" onkeypress="if(event.key==='Enter') agregarParada()">
-        <button class="btn btn-calc" onclick="agregarParada()">+ AÑADIR A LA RUTA</button>
+        <button class="btn btn-uprint" onclick="activarUprint()">📍 ACTIVAR ORIGEN: uPrint (Colonia 2095)</button>
+        <input type="text" id="dest" placeholder="Dirección de entrega (Ej: Ejido 1234)">
+        <button class="btn btn-calc" onclick="agregarParada()">+ AÑADIR ENTREGA</button>
     </div>
 
-   <div id="contenedor-ruta" class="card" style="display:none">
-        <h3 id="stats" style="text-align:center; color:var(--accent); margin: 5px 0;"></h3>
+    <div id="contenedor-ruta" class="card" style="display:none">
+        <h2 id="stats" style="text-align:center; color:var(--accent); margin:0 0 10px 0;"></h2>
         
-        <button class="btn" style="background: #6e40c9; color: white; margin-bottom: 10px;" onclick="optimizarRuta()">
-            🪄 OPTIMIZAR ORDEN LÓGICO
-        </button>
-
+        <button class="btn btn-opt" onclick="optimizarRuta()">🪄 OPTIMIZAR ORDEN (Más cercano)</button>
+        
         <div id="lista-paradas"></div>
-        <div id="map"></div>
-        </div>
-        
         <div id="map"></div>
 
         <div class="waze-grid">
-            <button class="btn btn-waze" onclick="abrirWaze('uprint')">IR A UPRINT</button>
-            <button class="btn btn-waze" onclick="abrirWaze('cliente')">PRÓXIMO CLIENTE</button>
+            <button class="btn btn-waze" onclick="abrirWaze('uprint')">VOLVER A TIENDA</button>
+            <button class="btn btn-waze" onclick="abrirWaze('cliente')">SIGUIENTE CLIENTE</button>
         </div>
-        
-        <button class="btn" style="background:#30363d; color:#c9d1d9; margin-top:15px" onclick="location.reload()">LIMPIAR TODO</button>
+        <button class="btn" style="background:#30363d; color:white; margin-top:10px" onclick="location.reload()">BORRAR RUTA</button>
     </div>
 
 <script>
-    const GPS_UPRINT = { lat: -34.898835, lon: -56.173822, n: "UPRINT (Colonia 2095)" };
+    // COORDENADAS CORREGIDAS: Colonia 2095
+    const GPS_UPRINT = { lat: -34.89862, lon: -56.17325, n: "uPrint Colonia 2095" };
     let pSalida = null;
     let paradas = [];
     let mapa = null;
-    let markers = [];
+    let rutaLine = null;
 
     function activarUprint() {
         pSalida = GPS_UPRINT;
+        document.querySelector('.btn-uprint').innerText = "✅ ORIGEN: COLONIA 2095";
         document.querySelector('.btn-uprint').style.background = "#238636";
         document.querySelector('.btn-uprint').style.color = "white";
-        document.querySelector('.btn-uprint').innerText = "✅ ORIGEN CONFIGURADO";
     }
 
     async function agregarParada() {
-        const input = document.getElementById('dest');
-        const direccion = input.value.trim();
-        
-        if(!pSalida) return alert("Primero activa el punto de origen (UPRINT)");
-        if(!direccion) return alert("Escribe una dirección");
+        const d = document.getElementById('dest').value.trim();
+        if(!pSalida) return alert("Activa primero uPrint");
+        if(!d) return alert("Escribe una dirección");
 
-        try {
-            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ", Montevideo, Uruguay")}&limit=1`);
-            const data = await r.json();
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(d + ", Montevideo, Uruguay")}&limit=1`);
+        const data = await r.json();
 
-            if(data[0]) {
-                paradas.push({
-                    lat: parseFloat(data[0].lat),
-                    lon: parseFloat(data[0].lon),
-                    n: direccion.toUpperCase()
-                });
-                input.value = "";
-                actualizarApp();
-            } else {
-                alert("No se encontró la dirección. Intenta agregar el número de puerta.");
-            }
-        } catch (e) {
-            alert("Error de conexión. Intenta de nuevo.");
+        if(data[0]) {
+            paradas.push({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), n: d.toUpperCase() });
+            document.getElementById('dest').value = "";
+            actualizarApp();
+        } else {
+            alert("No se encontró la dirección");
         }
     }
 
-    function eliminarParada(index) {
-        paradas.splice(index, 1);
+    function optimizarRuta() {
+        if (paradas.length < 2) return;
+        let optimizada = [];
+        let copia = [...paradas];
+        let actual = pSalida;
+
+        while (copia.length > 0) {
+            let cercanoIdx = 0;
+            let minDist = Infinity;
+            for (let i = 0; i < copia.length; i++) {
+                let d = calcularDist(actual, copia[i]);
+                if (d < minDist) { minDist = d; cercanoIdx = i; }
+            }
+            actual = copia[cercanoIdx];
+            optimizada.push(copia.splice(cercanoIdx, 1)[0]);
+        }
+        paradas = optimizada;
         actualizarApp();
     }
 
     function actualizarApp() {
-        const contenedor = document.getElementById('contenedor-ruta');
-        if(paradas.length === 0) {
-            contenedor.style.display = 'none';
-            return;
-        }
-        contenedor.style.display = 'block';
+        document.getElementById('contenedor-ruta').style.display = paradas.length ? 'block' : 'none';
+        renderLista();
+        renderMapa();
+        let dTotal = 0;
+        let pivot = pSalida;
+        paradas.forEach(p => { dTotal += calcularDist(pivot, p); pivot = p; });
         
-        renderizarLista();
-        calcularYMostrarStats();
-        dibujarMapa();
+        const distReal = dTotal * 1.25; // 25% extra por trazado urbano
+        const precio = Math.round(90 + (distReal * 14));
+        document.getElementById('stats').innerText = `${distReal.toFixed(1)} KM | $${precio}`;
     }
 
-    function renderizarLista() {
-        const lista = document.getElementById('lista-paradas');
-        lista.innerHTML = paradas.map((p, i) => `
+    function renderLista() {
+        document.getElementById('lista-paradas').innerHTML = paradas.map((p, i) => `
             <div class="stop-item">
-                <span><span class="badge">${i+1}</span> ${p.n}</span>
-                <button class="btn btn-del" onclick="eliminarParada(${i})">Borrar</button>
+                <span><b>${i+1}.</b> ${p.n}</span>
+                <button onclick="paradas.splice(${i},1);actualizarApp()" style="background:red;border:none;color:white;border-radius:4px;padding:4px 8px">X</button>
             </div>
         `).join('');
     }
 
-    function calcularYMostrarStats() {
-        let distTotal = 0;
-        let actual = pSalida;
-
-        paradas.forEach(p => {
-            distTotal += calcularHaversine(actual, p);
-            actual = p;
-        });
-
-        // Aplicamos factor de corrección de calle (20%) y tarifa
-        const distReal = distTotal * 1.2;
-        const precio = Math.round(90 + (distReal * 14));
-
-        document.getElementById('stats').innerText = `${paradas.length} Envíos | ${distReal.toFixed(1)} km | $${precio}`;
-    }
-
-    function calcularHaversine(p1, p2) {
+    function calcularDist(p1, p2) {
         const R = 6371;
-        const dLat = (p2.lat - p1.lat) * Math.PI / 180;
-        const dLon = (p2.lon - p1.lon) * Math.PI / 180;
+        const dLat = (p2.lat - p1.lat) * Math.PI/180;
+        const dLon = (p2.lon - p1.lon) * Math.PI/180;
         const a = Math.sin(dLat/2)**2 + Math.cos(p1.lat*Math.PI/180)*Math.cos(p2.lat*Math.PI/180)*Math.sin(dLon/2)**2;
         return R * 2 * Math.asin(Math.sqrt(a));
     }
 
-    function dibujarMapa() {
+    function renderMapa() {
         document.getElementById('map').style.display = 'block';
         if(mapa) mapa.remove();
-        
         mapa = L.map('map', {zoomControl: false});
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapa);
 
-        let puntos = [[pSalida.lat, pSalida.lon], ...paradas.map(p => [p.lat, p.lon])];
+        let coords = [[pSalida.lat, pSalida.lon], ...paradas.map(p => [p.lat, p.lon])];
         
-        puntos.forEach((p, i) => {
-            const color = i === 0 ? 'orange' : 'blue';
-            L.circleMarker(p, {color: color, radius: 8}).addTo(mapa)
-             .bindPopup(i === 0 ? "ORIGEN" : "Parada " + i);
+        // Marcadores
+        L.marker([pSalida.lat, pSalida.lon]).addTo(mapa).bindPopup("uPrint");
+        paradas.forEach((p, i) => {
+            L.circleMarker([p.lat, p.lon], {color: '#58a6ff', radius: 6}).addTo(mapa).bindPopup(p.n);
         });
 
-        mapa.fitBounds(puntos, {padding: [30, 30]});
+        // Línea de ruta
+        L.polyline(coords, {color: '#58a6ff', weight: 3, opacity: 0.6, dashArray: '5, 10'}).addTo(mapa);
+        
+        mapa.fitBounds(coords, {padding: [40, 40]});
     }
 
     function abrirWaze(tipo) {
-        let destino;
-        if(tipo === 'uprint') {
-            destino = pSalida;
-        } else {
-            if(paradas.length === 0) return alert("No hay paradas en la lista");
-            destino = paradas[0]; // Navega a la siguiente parada pendiente
-        }
-        
-        const url = `https://www.waze.com/ul?ll=${destino.lat},${destino.lon}&navigate=yes`;
-        window.open(url, '_blank');
+        const dest = tipo === 'uprint' ? pSalida : paradas[0];
+        if(!dest) return alert("No hay destino");
+        window.open(`https://www.waze.com/ul?ll=${dest.lat},${dest.lon}&navigate=yes`);
     }
-    function optimizarRuta() {
-    if (paradas.length < 2) return; // No hay nada que optimizar con una sola parada
-
-    let rutaOptimizada = [];
-    let copiaParadas = [...paradas];
-    let ubicacionActual = pSalida;
-
-    while (copiaParadas.length > 0) {
-        // Encontrar la parada más cercana a donde estoy parado ahora
-        let indiceCercano = 0;
-        let distanciaMinima = Infinity;
-
-        for (let i = 0; i < copiaParadas.length; i++) {
-            let d = calcularHaversine(ubicacionActual, copiaParadas[i]);
-            if (d < distanciaMinima) {
-                distanciaMinima = d;
-                indiceCercano = i;
-            }
-        }
-
-        // Mover la parada encontrada de la copia a la ruta optimizada
-        ubicacionActual = copiaParadas[indiceCercano];
-        rutaOptimizada.push(copiaParadas.splice(indiceCercano, 1)[0]);
-    }
-
-    paradas = rutaOptimizada;
-    actualizarApp();
-    alert("🚀 Ruta optimizada por cercanía");
-}
 </script>
 </body>
 </html>
+
 
 
