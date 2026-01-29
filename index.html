@@ -3,163 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UruDeliv Mapbox Pro</title>
+    <title>UruDeliv Pro - Mapbox Edition</title>
+    
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+
     <style>
-        :root { --bg: #0d1117; --card: #161b22; --accent: #58a6ff; --text: #c9d1d9; }
+        :root { --bg: #0d1117; --card: #161b22; --accent: #58a6ff; --text: #c9d1d9; --uprint: #ff3e3e; }
         body { margin: 0; font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 10px; }
-        .card { background: var(--card); border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
-        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; margin-bottom: 8px; }
-        .btn-uprint { background: #ff3e3e; color: white; }
+        
+        .card { background: var(--card); border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        
+        .btn { width: 100%; padding: 14px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; margin-bottom: 8px; }
+        .btn-uprint { background: var(--uprint); color: white; border: 2px solid rgba(255,255,255,0.2); }
         .btn-add { background: #238636; color: white; }
-        input { width: 100%; padding: 12px; background: #010409; border: 1px solid #30363d; color: white; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; }
-        #map { height: 350px; border-radius: 12px; border: 1px solid #30363d; }
-        .stats { font-size: 22px; text-align: center; color: var(--accent); font-weight: bold; margin: 10px 0; }
-        .stop-item { display: flex; justify-content: space-between; padding: 8px; background: #21262d; border-radius: 6px; margin-bottom: 5px; font-size: 13px; }
+        .btn-opt { background: #8957e5; color: white; }
+        
+        input { width: 100%; padding: 14px; background: #010409; border: 1px solid #30363d; color: white; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; }
+        
+        #map { height: 350px; border-radius: 12px; border: 1px solid #30363d; margin: 10px 0; background: #000; }
+        
+        .stats-display { text-align: center; margin-bottom: 15px; }
+        .stats-km { font-size: 28px; font-weight: bold; color: var(--accent); display: block; }
+        .stats-price { font-size: 22px; color: #7ee787; }
+        
+        .stop-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #21262d; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid var(--accent); }
+        .btn-del { background: none; border: none; color: #f85149; font-size: 18px; cursor: pointer; }
+        
+        .label-marker { background: #58a6ff; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <button class="btn btn-uprint" id="btnUprint" onclick="activarUprint()">📍 ACTIVAR UPRINT (COLONIA 2095)</button>
-        <input type="text" id="dest" placeholder="Dirección (Ej: Av Italia 1234)">
-        <button class="btn btn-add" onclick="agregarParada()">AÑADIR ENTREGA</button>
+        <button class="btn btn-uprint" id="btnStatus" onclick="iniciarSistema()">📍 ACTIVAR ORIGEN: uPrint (Colonia 2095)</button>
+        <div id="controls" style="display:none">
+            <input type="text" id="dest" placeholder="Dirección de entrega (Ej: Brandzen 1954)">
+            <button class="btn btn-add" onclick="buscarDireccion()">+ AÑADIR A LA HOJA DE RUTA</button>
+        </div>
     </div>
 
-    <div id="res" class="card" style="display:none">
-        <div class="stats" id="stats">0 km | $0</div>
-        <button class="btn" style="background:#8957e5; color:white" onclick="optimizarRuta()">🪄 OPTIMIZAR ORDEN</button>
-        <div id="lista" style="margin-bottom:10px"></div>
+    <div id="panel-ruta" class="card" style="display:none">
+        <div class="stats-display">
+            <span class="stats-km" id="km-text">0.0 KM</span>
+            <span class="stats-price" id="price-text">$0</span>
+        </div>
+        
+        <button class="btn btn-opt" onclick="optimizarRuta()">🪄 OPTIMIZAR ORDEN LÓGICO</button>
+        
+        <div id="lista-paradas" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
+        
         <div id="map"></div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px">
-            <button class="btn" style="background:#33ccff; color:black" onclick="abrirWaze()">WAZE</button>
-            <button class="btn" style="background:#444; color:white" onclick="location.reload()">REINICIAR</button>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <button class="btn" style="background: #33ccff; color: black;" onclick="abrirWaze()">SIGUIENTE (WAZE)</button>
+            <button class="btn" style="background: #30363d; color: white;" onclick="location.reload()">BORRAR TODO</button>
         </div>
     </div>
 
 <script>
-    // PEGA TU ACCESS TOKEN AQUÍ
-    const ACCESS_TOKEN = 'pk.eyJ1IjoiY2Fyb2F2ZWxsYW5lZGEiLCJhIjoiY21reXdwZTB0MGJzYjNnb2RqbW43aGRkMSJ9.dDPdLqd-z3xBN7D_rW_-nA'; 
+    // CONFIGURACIÓN PROFESIONAL
+    const ACCESS_TOKEN = 'pk.eyJ1IjoiY2Fyb2F2ZWxsYW5lZGEiLCJhIjoiY21reXdwZTB0MGJzYjNnb2RqbW43aGRkMSJ9.dDPdLqd-z3xBN7D_rW_-nA'; // <--- PEGA TU TOKEN AQUÍ
     mapboxgl.accessToken = ACCESS_TOKEN;
 
-   const UPRINT_COORDS = [-56.173250, -34.898620]; // Long, Lat para Mapbox
+    // Coordenadas Exactas uPrint: [Longitud, Latitud]
+    const UPRINT_LOCATION = [-56.173252, -34.898625]; 
+    
+    let map;
     let paradas = [];
-    let map, routeLayer;
+    let markers = [];
 
-    function activarUprint() {
-        document.getElementById('btnUprint').innerText = "✅ ORIGEN: COLONIA 2095";
-        document.getElementById('btnUprint').style.opacity = "0.6";
-        inicializarMapa();
-    }
-
-    function inicializarMapa() {
-        if (map) return;
+    function iniciarSistema() {
+        document.getElementById('btnStatus').style.display = 'none';
+        document.getElementById('controls').style.display = 'block';
+        
         map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/dark-v11',
-            center: UPRINT_COORDS,
-            zoom: 14
+            center: UPRINT_LOCATION,
+            zoom: 15,
+            pitch: 45
         });
 
-        new mapboxgl.Marker({ color: '#ff3e3e' }).setLngLat(UPRINT_COORDS).addTo(map);
+        // Marcador fijo de uPrint
+        new mapboxgl.Marker({ color: '#ff3e3e', scale: 1.2 })
+            .setLngLat(UPRINT_LOCATION)
+            .setPopup(new mapboxgl.Popup().setHTML("<b>uPrint</b><br>Colonia 2095"))
+            .addTo(map);
+            
+        document.getElementById('panel-ruta').style.display = 'block';
     }
 
-    async function agregarParada() {
-        const d = document.getElementById('dest').value;
-        if (!map) return alert("Activa uPrint primero");
-        
-        const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(d + ", Montevideo, Uruguay")}.json?access_token=${ACCESS_TOKEN}&limit=1`);
-        const data = await r.json();
+    async function buscarDireccion() {
+        const query = document.getElementById('dest').value.trim();
+        if (!query) return;
 
-        if (data.features && data.features.length > 0) {
-            const feat = data.features[0];
-            paradas.push({
-                lon: feat.center[0],
-                lat: feat.center[1],
-                n: d.toUpperCase()
-            });
-            document.getElementById('dest').value = "";
-            render();
-        } else {
-            alert("Dirección no encontrada");
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query + ", Montevideo, Uruguay")}.json?access_token=${ACCESS_TOKEN}&limit=1`;
+        
+        try {
+            const resp = await fetch(url);
+            const data = await resp.json();
+
+            if (data.features && data.features.length > 0) {
+                const f = data.features[0];
+                paradas.push({
+                    id: Date.now(),
+                    nombre: query.toUpperCase(),
+                    coords: f.center // [long, lat]
+                });
+                document.getElementById('dest').value = "";
+                actualizarInterfaz();
+            } else {
+                alert("No se encontró la dirección exacta.");
+            }
+        } catch (e) {
+            alert("Error al conectar con Mapbox.");
         }
     }
 
-    async function render() {
-        document.getElementById('res').style.display = 'block';
-        const listaDiv = document.getElementById('lista');
-        listaDiv.innerHTML = paradas.map((p, i) => `
-            <div class="stop-item">
-                <span>${i+1}. ${p.n}</span>
-                <button onclick="paradas.splice(${i},1);render()" style="background:none; border:none; color:red">✖</button>
-            </div>
-        `).join('');
-
-        actualizarRutaReal();
-    }
-
-    async function actualizarRutaReal() {
-        if (paradas.length === 0) return;
-
-        const coords = [UPRINT_COORDS, ...paradas.map(p => [p.lon, p.lat])].map(c => c.join(',')).join(';');
+    async function actualizarInterfaz() {
+        renderLista();
+        limpiarMarcadores();
         
-        const query = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${ACCESS_TOKEN}`);
-        const response = await query.json();
+        if (paradas.length === 0) {
+            if (map.getLayer('route')) map.removeLayer('route');
+            if (map.getSource('route')) map.removeSource('route');
+            document.getElementById('km-text').innerText = "0.0 KM";
+            document.getElementById('price-text').innerText = "$0";
+            return;
+        }
+
+        // Trazar Ruta Real por Calles
+        const puntosParaRuta = [UPRINT_LOCATION, ...paradas.map(p => p.coords)];
+        const coordString = puntosParaRuta.map(c => c.join(',')).join(';');
         
-        if (response.routes && response.routes[0]) {
-            const data = response.routes[0];
+        const routeResp = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?geometries=geojson&access_token=${ACCESS_TOKEN}`);
+        const routeData = await routeResp.json();
+
+        if (routeData.routes && routeData.routes[0]) {
+            const data = routeData.routes[0];
             const distKm = (data.distance / 1000).toFixed(1);
             const precio = Math.round(90 + (distKm * 14));
+
+            document.getElementById('km-text').innerText = `${distKm} KM`;
+            document.getElementById('price-text').innerText = `$${precio}`;
+
+            dibujarRuta(data.geometry);
             
-            document.getElementById('stats').innerText = `${distKm} km | $${precio}`;
-            dibujarLinea(data.geometry);
+            // Ajustar vista
+            const bounds = new mapboxgl.LngLatBounds();
+            puntosParaRuta.forEach(p => bounds.extend(p));
+            map.fitBounds(bounds, { padding: 60 });
         }
+
+        // Añadir Marcadores de Clientes
+        paradas.forEach((p, i) => {
+            const m = new mapboxgl.Marker({ color: '#58a6ff' })
+                .setLngLat(p.coords)
+                .addTo(map);
+            markers.push(m);
+        });
     }
 
-    function dibujarLinea(geojson) {
+    function dibujarRuta(geojson) {
         if (map.getSource('route')) {
             map.getSource('route').setData(geojson);
         } else {
+            map.addSource('route', { type: 'geojson', data: geojson });
             map.addLayer({
                 id: 'route',
                 type: 'line',
-                source: { type: 'geojson', data: geojson },
-                paint: { 'line-color': '#58a6ff', 'line-width': 4, 'line-opacity': 0.8 }
+                source: 'route',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': '#58a6ff', 'line-width': 5, 'line-opacity': 0.7 }
             });
         }
-        
-        // Ajustar zoom para ver toda la ruta
-        const bounds = new mapboxgl.LngLatBounds();
-        [UPRINT_COORDS, ...paradas.map(p => [p.lon, p.lat])].forEach(c => bounds.extend(c));
-        map.fitBounds(bounds, { padding: 50 });
     }
 
-    // El mismo algoritmo voraz pero ahora actualiza Mapbox
+    function renderLista() {
+        const lista = document.getElementById('lista-paradas');
+        lista.innerHTML = paradas.map((p, i) => `
+            <div class="stop-item">
+                <span><b>${i+1}.</b> ${p.nombre}</span>
+                <button class="btn-del" onclick="eliminarParada(${p.id})">✕</button>
+            </div>
+        `).join('');
+    }
+
+    function eliminarParada(id) {
+        paradas = paradas.filter(p => p.id !== id);
+        actualizarInterfaz();
+    }
+
+    function limpiarMarcadores() {
+        markers.forEach(m => m.remove());
+        markers = [];
+    }
+
     function optimizarRuta() {
         if (paradas.length < 2) return;
         let opt = [];
         let copia = [...paradas];
-        let actual = { lon: UPRINT_COORDS[0], lat: UPRINT_COORDS[1] };
+        let actual = UPRINT_LOCATION;
 
         while (copia.length > 0) {
             let cercanoIdx = 0;
             let minDist = Infinity;
             copia.forEach((p, i) => {
-                let d = Math.sqrt((actual.lon-p.lon)**2 + (actual.lat-p.lat)**2);
+                let d = Math.sqrt(Math.pow(actual[0]-p.coords[0], 2) + Math.pow(actual[1]-p.coords[1], 2));
                 if (d < minDist) { minDist = d; cercanoIdx = i; }
             });
-            actual = copia[cercanoIdx];
+            actual = copia[cercanoIdx].coords;
             opt.push(copia.splice(cercanoIdx, 1)[0]);
         }
         paradas = opt;
-        render();
+        actualizarInterfaz();
     }
 
     function abrirWaze() {
         if (paradas.length === 0) return;
-        const p = paradas[0];
-        window.open(`https://www.waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`);
+        const p = paradas[0].coords;
+        window.open(`https://www.waze.com/ul?ll=${p[1]},${p[0]}&navigate=yes`);
     }
 </script>
 </body>
